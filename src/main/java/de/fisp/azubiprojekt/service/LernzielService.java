@@ -3,6 +3,7 @@ package de.fisp.azubiprojekt.service;
 import de.fisp.azubiprojekt.dao.BerichtsheftDAO;
 import de.fisp.azubiprojekt.dao.LernzielDAO;
 import de.fisp.azubiprojekt.dao.PersonLernzielDAO;
+import de.fisp.azubiprojekt.dao.WochenberichtDAO;
 import de.fisp.azubiprojekt.dto.request.LernzielRequestDTO;
 import de.fisp.azubiprojekt.dto.response.CsvImportResponseDTO;
 import de.fisp.azubiprojekt.dto.response.LernzielResponseDTO;
@@ -10,6 +11,7 @@ import de.fisp.azubiprojekt.entity.Berichtsheft;
 import de.fisp.azubiprojekt.entity.Lernziel;
 import de.fisp.azubiprojekt.exceptions.InvalidRequestException;
 import de.fisp.azubiprojekt.exceptions.ResourceNotFoundException;
+import de.fisp.azubiprojekt.util.BerichtStatusEnum;
 import de.fisp.azubiprojekt.util.KindEnum;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +21,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.time.DayOfWeek;
 import java.util.*;
 
-/** Verwaltung der Lernziele inkl. CSV-Import und -Export. */
+/**
+ * Verwaltung der Lernziele inkl. CSV-Import und -Export.
+ *
+ * <p>Hierarchie-Regeln (Ausbildungsrahmenplan):</p>
+ * <ul>
+ *     <li>Ein Richtlernziel hat kein uebergeordnetes Lernziel.</li>
+ *     <li>Ein Groblernziel hat immer ein Richtlernziel als uebergeordnetes Lernziel.</li>
+ *     <li>Ein Feinlernziel hat immer ein Groblernziel als uebergeordnetes Lernziel.</li>
+ * </ul>
+ */
 @Service
 public class LernzielService {
 
@@ -31,69 +43,128 @@ public class LernzielService {
     private final LernzielDAO lernzielDAO;
     private final PersonLernzielDAO personLernzielDAO;
     private final BerichtsheftDAO berichtsheftDAO;
+    private final WochenberichtDAO wochenberichtDAO;
     private final PersonLernzielService personLernzielService;
 
     public LernzielService(LernzielDAO lernzielDAO, PersonLernzielDAO personLernzielDAO, BerichtsheftDAO berichtsheftDAO,
-                           PersonLernzielService personLernzielService) {
+                           WochenberichtDAO wochenberichtDAO, PersonLernzielService personLernzielService) {
         this.lernzielDAO = lernzielDAO;
         this.personLernzielDAO = personLernzielDAO;
         this.berichtsheftDAO = berichtsheftDAO;
+        this.wochenberichtDAO = wochenberichtDAO;
         this.personLernzielService = personLernzielService;
     }
 
     @Transactional(readOnly = true)
     public List<LernzielResponseDTO> getAll(KindEnum kind) {
         List<Lernziel> lernziele = kind == null ? lernzielDAO.findAll() : lernzielDAO.findByKind(kind);
+        Map<Long, Long> childCount = childCounts();
         return lernziele.stream()
                 .sorted(Comparator.comparing(Lernziel::getKind)
                         .thenComparing(Lernziel::getTitle, String.CASE_INSENSITIVE_ORDER))
-                .map(LernzielResponseDTO::from)
+                .map(l -> LernzielResponseDTO.from(l, childCount.getOrDefault(l.getId(), 0L)))
                 .toList();
+    }
+
+    /** Moegliche uebergeordnete Lernziele fuer eine Art (Richtlernziel: keine). */
+    @Transactional(readOnly = true)
+    public List<LernzielResponseDTO> getParentOptions(KindEnum kind) {
+        KindEnum parentKind = kind.requiredParentKind();
+        return parentKind == null ? List.of() : getAll(parentKind);
     }
 
     @Transactional(readOnly = true)
     public LernzielResponseDTO getById(Long id) {
-        return LernzielResponseDTO.from(find(id));
+        return LernzielResponseDTO.from(find(id), lernzielDAO.countByParentId(id));
     }
 
     @Transactional
     public LernzielResponseDTO create(LernzielRequestDTO request) {
-        validateParent(null, request.parentId());
-        Lernziel saved = lernzielDAO.save(new Lernziel(request.title().trim(), blankToNull(request.description()),
+        String title = request.title().trim();
+        validateHierarchy(request.kind(), request.parentId());
+        validateUniqueTitle(null, title, request.parentId());
+
+        Lernziel saved = lernzielDAO.save(new Lernziel(title, blankToNull(request.description()),
                 request.kind(), request.parentId()));
         personLernzielService.assignToAllLearners(saved);
-        return LernzielResponseDTO.from(saved);
+        if (saved.getParentId() != null) {
+            // Ein neues, offenes Unterziel kann den Status des uebergeordneten Ziels aendern
+            personLernzielService.recomputeForAllLearners(saved.getParentId());
+        }
+        return LernzielResponseDTO.from(saved, 0);
     }
 
     @Transactional
     public LernzielResponseDTO update(Long id, LernzielRequestDTO request) {
         Lernziel lernziel = find(id);
-        validateParent(id, request.parentId());
-        lernziel.setTitle(request.title().trim());
+        String title = request.title().trim();
+        long children = lernzielDAO.countByParentId(id);
+
+        if (request.kind() != lernziel.getKind()) {
+            if (children > 0) {
+                throw new InvalidRequestException("Die Art kann nicht geaendert werden, solange " + children
+                        + " untergeordnete Lernziele zugeordnet sind");
+            }
+            if (lernziel.getKind() == KindEnum.KIND_SPECIFIC && !berichtsheftDAO.findByQualificationsContains(lernziel).isEmpty()) {
+                throw new InvalidRequestException("Die Art kann nicht geaendert werden, weil das Feinlernziel "
+                        + "bereits in Berichtsheft-Eintraegen verwendet wird");
+            }
+        }
+        validateHierarchy(request.kind(), request.parentId());
+        validateUniqueTitle(id, title, request.parentId());
+
+        Long oldParent = lernziel.getParentId();
+        lernziel.setTitle(title);
         lernziel.setDescription(blankToNull(request.description()));
         lernziel.setKind(request.kind());
         lernziel.setParentId(request.parentId());
-        return LernzielResponseDTO.from(lernzielDAO.save(lernziel));
+        Lernziel saved = lernzielDAO.save(lernziel);
+
+        if (!Objects.equals(oldParent, saved.getParentId())) {
+            if (oldParent != null) {
+                personLernzielService.recomputeForAllLearners(oldParent);
+            }
+            if (saved.getParentId() != null) {
+                personLernzielService.recomputeForAllLearners(saved.getParentId());
+            }
+        }
+        return LernzielResponseDTO.from(saved, children);
     }
 
     /**
-     * Loescht ein Lernziel samt aller Zuordnungen. Untergeordnete Lernziele bleiben erhalten
-     * und werden eine Ebene nach oben gehaengt.
+     * Loescht ein Lernziel. Nicht erlaubt, solange untergeordnete Lernziele existieren oder das Lernziel
+     * in eingereichten bzw. abgezeichneten Wochen verwendet wird (die Nachweise sollen unveraendert bleiben).
+     * Aus Entwuerfen wird die Zuordnung entfernt.
      */
     @Transactional
     public void delete(Long id) {
         Lernziel lernziel = find(id);
-        personLernzielDAO.deleteAll(personLernzielDAO.findByLernziel(lernziel));
-        for (Berichtsheft b : berichtsheftDAO.findByQualificationsContains(lernziel)) {
+        long children = lernzielDAO.countByParentId(id);
+        if (children > 0) {
+            throw new InvalidRequestException("Das Lernziel hat " + children + " untergeordnete Lernziele. "
+                    + "Bitte diese zuerst loeschen oder einem anderen Lernziel zuordnen.");
+        }
+
+        List<Berichtsheft> eintraege = berichtsheftDAO.findByQualificationsContains(lernziel);
+        long gesperrt = eintraege.stream().filter(this::isLocked).count();
+        if (gesperrt > 0) {
+            throw new InvalidRequestException("Das Lernziel wird in " + gesperrt + " eingereichten oder abgezeichneten "
+                    + "Berichtsheft-Eintraegen verwendet und kann deshalb nicht geloescht werden.");
+        }
+        for (Berichtsheft b : eintraege) {
             b.getQualifications().removeIf(l -> Objects.equals(l.getId(), id));
         }
-        for (Lernziel child : lernzielDAO.findByParentId(id)) {
-            child.setParentId(lernziel.getParentId());
-        }
+
+        Long parentId = lernziel.getParentId();
+        personLernzielDAO.deleteAll(personLernzielDAO.findByLernziel(lernziel));
         lernzielDAO.delete(lernziel);
+        lernzielDAO.flush();
+        if (parentId != null) {
+            personLernzielService.recomputeForAllLearners(parentId);
+        }
     }
 
-    /** Exportiert alle Lernziele als CSV (Semikolon-getrennt, UTF-8, mit Kopfzeile). */
+    /** Exportiert alle Lernziele als CSV (Semikolon-getrennt, UTF-8, mit Kopfzeile), Eltern vor Kindern. */
     @Transactional(readOnly = true)
     public String exportCsv() {
         Map<Long, String> titles = new HashMap<>();
@@ -113,8 +184,8 @@ public class LernzielService {
 
     /**
      * Importiert Lernziele aus einer CSV-Datei: {@code titel;beschreibung;art;uebergeordnetes_lernziel}.
-     * Die Art kann als Enum-Name oder deutsche Bezeichnung angegeben werden (z. B. "Groblernziel").
-     * Das uebergeordnete Lernziel wird ueber den Titel gesucht (muss vorher in der Datei oder DB stehen).
+     * Es gelten dieselben Hierarchie-Regeln wie beim Anlegen. Fehlerhafte Zeilen werden uebersprungen
+     * und gemeldet.
      */
     @Transactional
     public CsvImportResponseDTO importCsv(InputStream input) {
@@ -164,23 +235,51 @@ public class LernzielService {
         create(new LernzielRequestDTO(title, values.get(1).trim(), kind, parentId));
     }
 
-    private void validateParent(Long id, Long parentId) {
-        if (parentId == null) {
+    /** Prueft die Regeln Richtlernziel → Groblernziel → Feinlernziel. */
+    void validateHierarchy(KindEnum kind, Long parentId) {
+        KindEnum requiredParent = kind.requiredParentKind();
+        if (requiredParent == null) {
+            if (parentId != null) {
+                throw new InvalidRequestException("Ein Richtlernziel steht ganz oben und hat kein uebergeordnetes Lernziel");
+            }
             return;
         }
-        if (Objects.equals(id, parentId)) {
-            throw new InvalidRequestException("Ein Lernziel kann nicht sein eigenes uebergeordnetes Lernziel sein");
+        if (parentId == null) {
+            throw new InvalidRequestException("Ein " + kind.getLabel() + " braucht ein " + requiredParent.getLabel()
+                    + " als uebergeordnetes Lernziel");
         }
-        Lernziel current = lernzielDAO.findById(parentId)
+        Lernziel parent = lernzielDAO.findById(parentId)
                 .orElseThrow(() -> new InvalidRequestException("Uebergeordnetes Lernziel " + parentId + " existiert nicht"));
-        // Zyklen verhindern (A -> B -> A)
-        Set<Long> visited = new HashSet<>();
-        while (current != null && current.getParentId() != null && visited.add(current.getId())) {
-            if (Objects.equals(current.getParentId(), id)) {
-                throw new InvalidRequestException("Diese Zuordnung wuerde einen Zyklus erzeugen");
-            }
-            current = lernzielDAO.findById(current.getParentId()).orElse(null);
+        if (parent.getKind() != requiredParent) {
+            throw new InvalidRequestException("Ein " + kind.getLabel() + " muss einem " + requiredParent.getLabel()
+                    + " untergeordnet sein, '" + parent.getTitle() + "' ist ein " + parent.getKind().getLabel());
         }
+    }
+
+    private void validateUniqueTitle(Long id, String title, Long parentId) {
+        long self = id == null ? -1L : id;
+        boolean exists = parentId == null
+                ? lernzielDAO.existsByTitleIgnoreCaseAndParentIdIsNullAndIdNot(title, self)
+                : lernzielDAO.existsByTitleIgnoreCaseAndParentIdAndIdNot(title, parentId, self);
+        if (exists) {
+            throw new InvalidRequestException("Auf dieser Ebene gibt es bereits ein Lernziel '" + title + "'");
+        }
+    }
+
+    private boolean isLocked(Berichtsheft eintrag) {
+        return wochenberichtDAO.findByPersonAndWeekStart(eintrag.getPerson(), eintrag.getDate().with(DayOfWeek.MONDAY))
+                .map(w -> !w.getStatus().isEditable())
+                .orElse(false);
+    }
+
+    private Map<Long, Long> childCounts() {
+        Map<Long, Long> counts = new HashMap<>();
+        for (Lernziel l : lernzielDAO.findAll()) {
+            if (l.getParentId() != null) {
+                counts.merge(l.getParentId(), 1L, Long::sum);
+            }
+        }
+        return counts;
     }
 
     private Lernziel find(Long id) {

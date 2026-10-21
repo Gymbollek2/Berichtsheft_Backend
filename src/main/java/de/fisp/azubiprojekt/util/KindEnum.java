@@ -24,6 +24,18 @@ public enum KindEnum {
     }
 
     /**
+     * Art, die das uebergeordnete Lernziel haben muss:
+     * Richtlernziel → keines, Groblernziel → Richtlernziel, Feinlernziel → Groblernziel.
+     */
+    public KindEnum requiredParentKind() {
+        return switch (this) {
+            case KIND_GENERAL -> null;
+            case KIND_BROAD -> KIND_GENERAL;
+            case KIND_SPECIFIC -> KIND_BROAD;
+        };
+    }
+
+    /**
      * Erkennt sowohl den Enum-Namen (z. B. {@code KIND_BROAD}) als auch die deutsche
      * Bezeichnung bzw. Kurzform (z. B. {@code Groblernziel}, {@code grob}).
      */

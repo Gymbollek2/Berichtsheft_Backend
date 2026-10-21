@@ -36,6 +36,12 @@ public class LernzielController {
         return lernzielService.getAll(kind);
     }
 
+    /** Lernziele, die fuer die angegebene Art als uebergeordnetes Lernziel in Frage kommen. */
+    @GetMapping("/parent-options")
+    public List<LernzielResponseDTO> parentOptions(@RequestParam KindEnum kind) {
+        return lernzielService.getParentOptions(kind);
+    }
+
     @GetMapping("/{id}")
     public LernzielResponseDTO getById(@PathVariable Long id) {
         return lernzielService.getById(id);

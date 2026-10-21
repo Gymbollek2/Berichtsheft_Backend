@@ -7,6 +7,7 @@ import de.fisp.azubiprojekt.dao.PersonLernzielDAO;
 import de.fisp.azubiprojekt.dao.UserDAO;
 import de.fisp.azubiprojekt.dao.WochenberichtDAO;
 import de.fisp.azubiprojekt.entity.*;
+import de.fisp.azubiprojekt.service.PersonLernzielService;
 import de.fisp.azubiprojekt.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,10 +41,13 @@ public class DemoDataInitializer implements ApplicationRunner {
     private final BerichtsheftDAO berichtsheftDAO;
     private final WochenberichtDAO wochenberichtDAO;
     private final PasswordEncoder passwordEncoder;
+    private final PersonLernzielService personLernzielService;
 
     public DemoDataInitializer(PersonDAO personDAO, UserDAO userDAO, LernzielDAO lernzielDAO,
                                PersonLernzielDAO personLernzielDAO, BerichtsheftDAO berichtsheftDAO,
-                               WochenberichtDAO wochenberichtDAO, PasswordEncoder passwordEncoder) {
+                               WochenberichtDAO wochenberichtDAO, PasswordEncoder passwordEncoder,
+                               PersonLernzielService personLernzielService) {
+        this.personLernzielService = personLernzielService;
         this.personDAO = personDAO;
         this.userDAO = userDAO;
         this.lernzielDAO = lernzielDAO;
@@ -64,9 +68,9 @@ public class DemoDataInitializer implements ApplicationRunner {
         createPerson("Anna", "Admin", RoleEnum.ROLE_ADMIN, "admin", "admin123", null, 0, null);
         Person ausbilder = createPerson("Petra", "Pruefer", RoleEnum.ROLE_TRAINER, "ausbilder", "ausbilder123", null, 0, null);
         Person max = createPerson("Max", "Mustermann", RoleEnum.ROLE_TRAINEE, "azubi", "azubi123", BERUF, 2,
-                LocalDate.now().minusYears(1).withMonth(9).withDayOfMonth(1));
+                LocalDate.now().minusYears(1).minusMonths(2).withDayOfMonth(1));
         Person erika = createPerson("Erika", "Musterfrau", RoleEnum.ROLE_TRAINEE, "azubi2", "azubi123", BERUF, 1,
-                LocalDate.now().withMonth(9).withDayOfMonth(1));
+                LocalDate.now().minusMonths(3).withDayOfMonth(1));
 
         // Lernziel-Hierarchie (Auszug Ausbildungsrahmenplan)
         Lernziel software = lz("Software entwickeln", "Anwendungen nach Kundenanforderungen planen, umsetzen und testen", KindEnum.KIND_GENERAL, null);
@@ -92,6 +96,10 @@ public class DemoDataInitializer implements ApplicationRunner {
         setStatus(max, junit, StatusEnum.STATUS_DONE);
         setStatus(max, rest, StatusEnum.STATUS_IN_PROGRESS);
         setStatus(max, scrum, StatusEnum.STATUS_IN_PROGRESS);
+        // Status der Grob- und Richtlernziele aus den Feinlernzielen berechnen
+        for (Lernziel grob : List.of(java, web, sicherheit, projekt)) {
+            personLernzielService.recomputeAncestors(max, grob.getId());
+        }
 
         // Max: letzte Woche eingereicht (wartet auf Pruefung), vorletzte Woche abgezeichnet, aktuelle Woche Entwurf
         LocalDate dieseWoche = LocalDate.now().with(DayOfWeek.MONDAY);

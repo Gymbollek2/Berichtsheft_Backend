@@ -16,4 +16,12 @@ public interface LernzielDAO extends JpaRepository<Lernziel, Long> {
     List<Lernziel> findByParentId(Long parentId);
 
     Optional<Lernziel> findFirstByTitleIgnoreCase(String title);
+
+    boolean existsByParentId(Long parentId);
+
+    long countByParentId(Long parentId);
+
+    boolean existsByTitleIgnoreCaseAndParentIdAndIdNot(String title, Long parentId, Long id);
+
+    boolean existsByTitleIgnoreCaseAndParentIdIsNullAndIdNot(String title, Long id);
 }

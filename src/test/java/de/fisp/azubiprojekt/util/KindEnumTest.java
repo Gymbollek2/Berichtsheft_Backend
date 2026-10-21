@@ -16,6 +16,13 @@ class KindEnumTest {
     }
 
     @Test
+    void hierarchyRichtGrobFein() {
+        assertEquals(null, KindEnum.KIND_GENERAL.requiredParentKind());
+        assertEquals(KindEnum.KIND_GENERAL, KindEnum.KIND_BROAD.requiredParentKind());
+        assertEquals(KindEnum.KIND_BROAD, KindEnum.KIND_SPECIFIC.requiredParentKind());
+    }
+
+    @Test
     void parseRejectsUnknownValues() {
         assertThrows(IllegalArgumentException.class, () -> KindEnum.parse("Superziel"));
         assertThrows(IllegalArgumentException.class, () -> KindEnum.parse(""));
