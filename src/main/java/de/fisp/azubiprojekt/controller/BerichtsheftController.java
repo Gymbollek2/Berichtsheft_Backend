@@ -48,7 +48,7 @@ public class BerichtsheftController {
     @DeleteMapping("/eintrag/{id}")
     public MessageResponseDTO deleteEintrag(@PathVariable Long id) {
         berichtsheftService.deleteEintrag(id);
-        return new MessageResponseDTO("Eintrag geloescht");
+        return new MessageResponseDTO("Eintrag gelöscht");
     }
 
     @PostMapping("/woche/einreichen")

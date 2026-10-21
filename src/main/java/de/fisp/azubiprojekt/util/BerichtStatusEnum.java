@@ -9,7 +9,7 @@ public enum BerichtStatusEnum {
     /** Ausbilder hat die Woche abgezeichnet. */
     ABGEZEICHNET("Abgezeichnet"),
     /** Ausbilder hat die Woche mit Kommentar zurueckgegeben – Azubi kann nachbessern. */
-    ABGELEHNT("Zur Ueberarbeitung");
+    ABGELEHNT("Zur Überarbeitung");
 
     private final String label;
 

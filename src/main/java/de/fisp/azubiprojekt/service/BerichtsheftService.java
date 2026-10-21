@@ -138,21 +138,21 @@ public class BerichtsheftService {
     void validateEintrag(Person person, BerichtsheftSaveRequestDTO request) {
         LocalDate date = request.date();
         if (date.isAfter(LocalDate.now())) {
-            throw new InvalidRequestException("Fuer zukuenftige Tage kann noch nichts eingetragen werden");
+            throw new InvalidRequestException("Für zukünftige Tage kann noch nichts eingetragen werden");
         }
         if (person.getDateOfTrainingStart() != null && date.isBefore(person.getDateOfTrainingStart())) {
             throw new InvalidRequestException("Der Tag liegt vor deinem Ausbildungsbeginn ("
                     + person.getDateOfTrainingStart().format(DE_DATE) + ")");
         }
         if (request.hours() > MAX_HOURS) {
-            throw new InvalidRequestException("Pro Tag sind hoechstens " + (int) MAX_HOURS + " Stunden erlaubt (Arbeitszeitgesetz)");
+            throw new InvalidRequestException("Pro Tag sind höchstens " + (int) MAX_HOURS + " Stunden erlaubt (Arbeitszeitgesetz)");
         }
         boolean anwesend = request.art() == EintragArtEnum.BETRIEB || request.art() == EintragArtEnum.SCHULE;
         if (anwesend && request.hours() <= 0) {
-            throw new InvalidRequestException("Bitte gib die Stunden fuer " + request.art().getLabel() + " an");
+            throw new InvalidRequestException("Bitte gib die Stunden für " + request.art().getLabel() + " an");
         }
         if (anwesend && (request.description() == null || request.description().isBlank())) {
-            throw new InvalidRequestException("Bitte beschreibe deine Taetigkeiten bzw. die Unterrichtsthemen");
+            throw new InvalidRequestException("Bitte beschreibe deine Tätigkeiten bzw. die Unterrichtsthemen");
         }
         boolean abwesend = request.art() == EintragArtEnum.URLAUB || request.art() == EintragArtEnum.KRANK
                 || request.art() == EintragArtEnum.FEIERTAG;
@@ -167,7 +167,7 @@ public class BerichtsheftService {
         Berichtsheft eintrag = berichtsheftDAO.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Eintrag " + id + " nicht gefunden"));
         if (!Objects.equals(eintrag.getPerson().getId(), person.getId())) {
-            throw new ActionNotAllowedException("Du kannst nur deine eigenen Eintraege loeschen");
+            throw new ActionNotAllowedException("Du kannst nur deine eigenen Einträge löschen");
         }
         requireEditable(person, eintrag.getDate());
         person.getBerichtshefte().remove(eintrag);
@@ -202,7 +202,7 @@ public class BerichtsheftService {
             }
         }
         if (!fehlend.isEmpty()) {
-            throw new InvalidRequestException("Es fehlen noch Eintraege fuer: " + String.join(", ", fehlend)
+            throw new InvalidRequestException("Es fehlen noch Einträge für: " + String.join(", ", fehlend)
                     + ". Trage Urlaub, Krankheit oder Feiertage bitte als solche ein.");
         }
 
@@ -282,7 +282,7 @@ public class BerichtsheftService {
     private Person requireLearner() {
         Person person = currentUserService.getPerson();
         if (!person.getRole().isLearner()) {
-            throw new ActionNotAllowedException("Nur Auszubildende und duale Studierende fuehren ein Berichtsheft");
+            throw new ActionNotAllowedException("Nur Auszubildende und duale Studierende führen ein Berichtsheft");
         }
         return person;
     }
@@ -300,7 +300,7 @@ public class BerichtsheftService {
         Wochenbericht bericht = wochenberichtDAO.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Wochenbericht " + id + " nicht gefunden"));
         if (bericht.getStatus() != BerichtStatusEnum.EINGEREICHT) {
-            throw new InvalidRequestException("Nur eingereichte Wochen koennen geprueft werden (aktuell: "
+            throw new InvalidRequestException("Nur eingereichte Wochen können geprüft werden (aktuell: "
                     + bericht.getStatus().getLabel() + ")");
         }
         return bericht;
@@ -318,7 +318,7 @@ public class BerichtsheftService {
         }
         for (Lernziel l : found) {
             if (l.getKind() != KindEnum.KIND_SPECIFIC) {
-                throw new InvalidRequestException("Taetigkeiten werden Feinlernzielen zugeordnet – '" + l.getTitle()
+                throw new InvalidRequestException("Tätigkeiten werden Feinlernzielen zugeordnet – '" + l.getTitle()
                         + "' ist ein " + l.getKind().getLabel());
             }
             if (!personLernzielDAO.existsByPersonAndLernziel(person, l)) {

@@ -60,7 +60,7 @@ public class SecurityConfig {
                         .authenticationEntryPoint((req, res, ex) ->
                                 writeError(res, HttpServletResponse.SC_UNAUTHORIZED, "Nicht angemeldet oder Sitzung abgelaufen"))
                         .accessDeniedHandler((req, res, ex) ->
-                                writeError(res, HttpServletResponse.SC_FORBIDDEN, "Keine Berechtigung fuer diese Aktion")))
+                                writeError(res, HttpServletResponse.SC_FORBIDDEN, "Keine Berechtigung für diese Aktion")))
                 .addFilterBefore(new JwtAuthenticationFilter(jwtService, userService), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

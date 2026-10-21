@@ -102,12 +102,12 @@ public class LernzielService {
 
         if (request.kind() != lernziel.getKind()) {
             if (children > 0) {
-                throw new InvalidRequestException("Die Art kann nicht geaendert werden, solange " + children
+                throw new InvalidRequestException("Die Art kann nicht geändert werden, solange " + children
                         + " untergeordnete Lernziele zugeordnet sind");
             }
             if (lernziel.getKind() == KindEnum.KIND_SPECIFIC && !berichtsheftDAO.findByQualificationsContains(lernziel).isEmpty()) {
-                throw new InvalidRequestException("Die Art kann nicht geaendert werden, weil das Feinlernziel "
-                        + "bereits in Berichtsheft-Eintraegen verwendet wird");
+                throw new InvalidRequestException("Die Art kann nicht geändert werden, weil das Feinlernziel "
+                        + "bereits in Berichtsheft-Einträgen verwendet wird");
             }
         }
         validateHierarchy(request.kind(), request.parentId());
@@ -142,14 +142,14 @@ public class LernzielService {
         long children = lernzielDAO.countByParentId(id);
         if (children > 0) {
             throw new InvalidRequestException("Das Lernziel hat " + children + " untergeordnete Lernziele. "
-                    + "Bitte diese zuerst loeschen oder einem anderen Lernziel zuordnen.");
+                    + "Bitte diese zuerst löschen oder einem anderen Lernziel zuordnen.");
         }
 
         List<Berichtsheft> eintraege = berichtsheftDAO.findByQualificationsContains(lernziel);
         long gesperrt = eintraege.stream().filter(this::isLocked).count();
         if (gesperrt > 0) {
             throw new InvalidRequestException("Das Lernziel wird in " + gesperrt + " eingereichten oder abgezeichneten "
-                    + "Berichtsheft-Eintraegen verwendet und kann deshalb nicht geloescht werden.");
+                    + "Berichtsheft-Einträgen verwendet und kann deshalb nicht gelöscht werden.");
         }
         for (Berichtsheft b : eintraege) {
             b.getQualifications().removeIf(l -> Objects.equals(l.getId(), id));
@@ -230,7 +230,7 @@ public class LernzielService {
             String parentTitle = values.get(3).trim();
             parentId = lernzielDAO.findFirstByTitleIgnoreCase(parentTitle)
                     .map(Lernziel::getId)
-                    .orElseThrow(() -> new IllegalArgumentException("uebergeordnetes Lernziel '" + parentTitle + "' nicht gefunden"));
+                    .orElseThrow(() -> new IllegalArgumentException("übergeordnetes Lernziel '" + parentTitle + "' nicht gefunden"));
         }
         create(new LernzielRequestDTO(title, values.get(1).trim(), kind, parentId));
     }
@@ -240,16 +240,16 @@ public class LernzielService {
         KindEnum requiredParent = kind.requiredParentKind();
         if (requiredParent == null) {
             if (parentId != null) {
-                throw new InvalidRequestException("Ein Richtlernziel steht ganz oben und hat kein uebergeordnetes Lernziel");
+                throw new InvalidRequestException("Ein Richtlernziel steht ganz oben und hat kein übergeordnetes Lernziel");
             }
             return;
         }
         if (parentId == null) {
             throw new InvalidRequestException("Ein " + kind.getLabel() + " braucht ein " + requiredParent.getLabel()
-                    + " als uebergeordnetes Lernziel");
+                    + " als übergeordnetes Lernziel");
         }
         Lernziel parent = lernzielDAO.findById(parentId)
-                .orElseThrow(() -> new InvalidRequestException("Uebergeordnetes Lernziel " + parentId + " existiert nicht"));
+                .orElseThrow(() -> new InvalidRequestException("Übergeordnetes Lernziel " + parentId + " existiert nicht"));
         if (parent.getKind() != requiredParent) {
             throw new InvalidRequestException("Ein " + kind.getLabel() + " muss einem " + requiredParent.getLabel()
                     + " untergeordnet sein, '" + parent.getTitle() + "' ist ein " + parent.getKind().getLabel());

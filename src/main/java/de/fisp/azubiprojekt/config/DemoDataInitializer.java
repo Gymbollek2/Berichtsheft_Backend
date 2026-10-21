@@ -76,15 +76,15 @@ public class DemoDataInitializer implements ApplicationRunner {
         Lernziel software = lz("Software entwickeln", "Anwendungen nach Kundenanforderungen planen, umsetzen und testen", KindEnum.KIND_GENERAL, null);
         Lernziel java = lz("Programmieren mit Java", "Grundlagen und fortgeschrittene Konzepte der Sprache Java", KindEnum.KIND_BROAD, software);
         Lernziel oop = lz("Objektorientierte Konzepte anwenden", "Klassen, Vererbung, Interfaces und Polymorphie sicher einsetzen", KindEnum.KIND_SPECIFIC, java);
-        Lernziel junit = lz("Unit-Tests mit JUnit schreiben", "Testfaelle entwerfen und automatisiert ausfuehren", KindEnum.KIND_SPECIFIC, java);
+        Lernziel junit = lz("Unit-Tests mit JUnit schreiben", "Testfälle entwerfen und automatisiert ausführen", KindEnum.KIND_SPECIFIC, java);
         Lernziel web = lz("Webanwendungen entwickeln", "Client-Server-Architekturen verstehen und umsetzen", KindEnum.KIND_BROAD, software);
         Lernziel rest = lz("REST-Schnittstellen entwickeln", "APIs mit Spring Boot entwerfen und dokumentieren", KindEnum.KIND_SPECIFIC, web);
         Lernziel angular = lz("Frontend mit Angular umsetzen", "Komponenten, Services und Routing einsetzen", KindEnum.KIND_SPECIFIC, web);
-        Lernziel betrieb = lz("Betrieb und Organisation", "Aufbau, Ablaeufe und Regeln des Ausbildungsbetriebs", KindEnum.KIND_GENERAL, null);
-        Lernziel sicherheit = lz("IT-Sicherheit und Datenschutz", "Schutzbedarf erkennen und Massnahmen umsetzen", KindEnum.KIND_BROAD, betrieb);
+        Lernziel betrieb = lz("Betrieb und Organisation", "Aufbau, Abläufe und Regeln des Ausbildungsbetriebs", KindEnum.KIND_GENERAL, null);
+        Lernziel sicherheit = lz("IT-Sicherheit und Datenschutz", "Schutzbedarf erkennen und Maßnahmen umsetzen", KindEnum.KIND_BROAD, betrieb);
         Lernziel dsgvo = lz("Datenschutz (DSGVO) beachten", "Personenbezogene Daten rechtskonform verarbeiten", KindEnum.KIND_SPECIFIC, sicherheit);
-        Lernziel projekt = lz("Projektarbeit", "Arbeitsablaeufe planen und im Team umsetzen", KindEnum.KIND_BROAD, betrieb);
-        Lernziel scrum = lz("Agile Methoden (Scrum) anwenden", "Sprints planen, Daily Scrum und Retrospektiven durchfuehren", KindEnum.KIND_SPECIFIC, projekt);
+        Lernziel projekt = lz("Projektarbeit", "Arbeitsabläufe planen und im Team umsetzen", KindEnum.KIND_BROAD, betrieb);
+        Lernziel scrum = lz("Agile Methoden (Scrum) anwenden", "Sprints planen, Daily Scrum und Retrospektiven durchführen", KindEnum.KIND_SPECIFIC, projekt);
 
         List<Lernziel> alle = List.of(software, java, oop, junit, web, rest, angular, betrieb, sicherheit, dsgvo, projekt, scrum);
         for (Person azubi : List.of(max, erika)) {
@@ -96,6 +96,7 @@ public class DemoDataInitializer implements ApplicationRunner {
         setStatus(max, junit, StatusEnum.STATUS_DONE);
         setStatus(max, rest, StatusEnum.STATUS_IN_PROGRESS);
         setStatus(max, scrum, StatusEnum.STATUS_IN_PROGRESS);
+        setStatus(max, angular, StatusEnum.STATUS_IN_PROGRESS);
         // Status der Grob- und Richtlernziele aus den Feinlernzielen berechnen
         for (Lernziel grob : List.of(java, web, sicherheit, projekt)) {
             personLernzielService.recomputeAncestors(max, grob.getId());
@@ -110,29 +111,29 @@ public class DemoDataInitializer implements ApplicationRunner {
                 "Einarbeitung in das Azubi-Portal, Entwicklungsumgebung eingerichtet",
                 "Java-Grundlagen wiederholt: Klassen, Interfaces, Vererbung",
                 "Berufsschule: Netzwerktechnik und Wirtschaft",
-                "Erste Unit-Tests mit JUnit 5 fuer den PersonService geschrieben",
+                "Erste Unit-Tests mit JUnit 5 für den PersonService geschrieben",
                 "Code-Review mit dem Team, Feedback eingearbeitet"), List.of(oop, junit));
         Wochenbericht abgezeichnet = new Wochenbericht(max, vorletzteWoche);
         abgezeichnet.setStatus(BerichtStatusEnum.ABGEZEICHNET);
         abgezeichnet.setEingereichtAm(LocalDateTime.now().minusDays(9));
         abgezeichnet.setGeprueftAm(LocalDateTime.now().minusDays(8));
         abgezeichnet.setGeprueftVon(ausbilder.getFullName());
-        abgezeichnet.setKommentar("Sehr ausfuehrlich, weiter so!");
+        abgezeichnet.setKommentar("Sehr ausführlich, weiter so!");
         wochenberichtDAO.save(abgezeichnet);
 
         woche(max, letzteWoche, List.of(
-                "REST-Endpunkte fuer Lernziele mit Spring Boot umgesetzt",
-                "Fehlerbehandlung und Validierung im Backend ergaenzt",
+                "REST-Endpunkte für Lernziele mit Spring Boot umgesetzt",
+                "Fehlerbehandlung und Validierung im Backend ergänzt",
                 "Berufsschule: Datenbanken (SQL, Normalisierung)",
-                "Sprint Planning und Daily Scrum, Aufgaben geschaetzt",
-                "Integrationstests fuer die API geschrieben"), List.of(rest, scrum));
+                "Sprint Planning und Daily Scrum, Aufgaben geschätzt",
+                "Integrationstests für die API geschrieben"), List.of(rest, scrum));
         Wochenbericht eingereicht = new Wochenbericht(max, letzteWoche);
         eingereicht.setStatus(BerichtStatusEnum.EINGEREICHT);
         eingereicht.setEingereichtAm(LocalDateTime.now().minusDays(2));
         wochenberichtDAO.save(eingereicht);
 
         berichtsheftDAO.save(eintrag(max, dieseWoche, EintragArtEnum.BETRIEB, 8,
-                "Angular-Komponente fuer die Wochenansicht begonnen", List.of(angular)));
+                "Angular-Komponente für die Wochenansicht begonnen", List.of(angular)));
 
         log.info("Demo-Logins: admin/admin123 (Admin), ausbilder/ausbilder123 (Ausbilder), azubi/azubi123 und azubi2/azubi123 (Azubis)");
     }

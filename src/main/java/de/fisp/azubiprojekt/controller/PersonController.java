@@ -60,13 +60,13 @@ public class PersonController {
     @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
     public MessageResponseDTO delete(@PathVariable Long id) {
         personService.delete(id);
-        return new MessageResponseDTO("Person geloescht");
+        return new MessageResponseDTO("Person gelöscht");
     }
 
     @PostMapping("/{id}/reset-password")
     @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
     public MessageResponseDTO resetPassword(@PathVariable Long id, @Valid @RequestBody PasswordResetRequestDTO request) {
         personService.resetPassword(id, request);
-        return new MessageResponseDTO("Passwort zurueckgesetzt");
+        return new MessageResponseDTO("Passwort zurückgesetzt");
     }
 }

@@ -80,6 +80,6 @@ public class CurrentUserService {
         if (getRole() == RoleEnum.ROLE_TRAINER && targetRole.isLearner()) {
             return;
         }
-        throw new ActionNotAllowedException("Nur Administratoren duerfen Ausbilder und Administratoren verwalten");
+        throw new ActionNotAllowedException("Nur Administratoren dürfen Ausbilder und Administratoren verwalten");
     }
 }

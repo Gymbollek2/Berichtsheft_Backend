@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.1] – 2026-10-21
+
+### Behoben
+- Meldungen und Status-Bezeichnungen mit echten Umlauten (z. B. „Zur Überarbeitung“ statt „Zur Ueberarbeitung“).
+- Demo-Daten: Feinlernziel „Frontend mit Angular umsetzen“ steht bei Max auf „In Bearbeitung“, passend zum Berichtsheft-Eintrag.
+
 ## [1.1.0] – 2026-10-21
 
 ### Neu

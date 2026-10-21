@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({ActionNotAllowedException.class, AccessDeniedException.class, AuthorizationDeniedException.class})
     public ResponseEntity<ErrorResponse> handleForbidden(Exception ex) {
-        String message = ex instanceof ActionNotAllowedException ? ex.getMessage() : "Keine Berechtigung fuer diese Aktion";
+        String message = ex instanceof ActionNotAllowedException ? ex.getMessage() : "Keine Berechtigung für diese Aktion";
         return build(HttpStatus.FORBIDDEN, message);
     }
 
@@ -58,7 +58,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class,
             MissingServletRequestParameterException.class})
     public ResponseEntity<ErrorResponse> handleUnreadable(Exception ex) {
-        return build(HttpStatus.BAD_REQUEST, "Ungueltige Anfrage: " + ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST, "Ungültige Anfrage: " + ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

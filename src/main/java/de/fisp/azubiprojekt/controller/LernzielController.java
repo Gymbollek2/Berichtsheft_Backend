@@ -64,7 +64,7 @@ public class LernzielController {
     @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
     public MessageResponseDTO delete(@PathVariable Long id) {
         lernzielService.delete(id);
-        return new MessageResponseDTO("Lernziel geloescht");
+        return new MessageResponseDTO("Lernziel gelöscht");
     }
 
     @GetMapping(value = "/export", produces = "text/csv")

@@ -99,13 +99,13 @@ public class PersonService {
         currentUserService.requireCanManage(oldRole);
         currentUserService.requireCanManage(request.role());
         if (Objects.equals(id, currentUserService.getPersonId()) && request.role() != oldRole) {
-            throw new ActionNotAllowedException("Du kannst deine eigene Rolle nicht aendern");
+            throw new ActionNotAllowedException("Du kannst deine eigene Rolle nicht ändern");
         }
         if (oldRole == RoleEnum.ROLE_ADMIN && request.role() != RoleEnum.ROLE_ADMIN && isLastAdmin()) {
             throw new InvalidRequestException("Es muss mindestens ein Administrator erhalten bleiben");
         }
         if (oldRole.isLearner() && !request.role().isLearner() && !person.getBerichtshefte().isEmpty()) {
-            throw new InvalidRequestException("Die Person hat bereits Berichtsheft-Eintraege und kann deshalb "
+            throw new InvalidRequestException("Die Person hat bereits Berichtsheft-Einträge und kann deshalb "
                     + "nicht zu " + request.role().getLabel() + " gemacht werden");
         }
         validateTrainingData(request.role(), request.dateOfTrainingStart(), request.dateOfBirth());
@@ -138,12 +138,12 @@ public class PersonService {
     @Transactional
     public void delete(Long id) {
         if (Objects.equals(id, currentUserService.getPersonId())) {
-            throw new ActionNotAllowedException("Du kannst dich nicht selbst loeschen");
+            throw new ActionNotAllowedException("Du kannst dich nicht selbst löschen");
         }
         Person person = findPerson(id);
         currentUserService.requireCanManage(person.getRole());
         if (person.getRole() == RoleEnum.ROLE_ADMIN && isLastAdmin()) {
-            throw new InvalidRequestException("Der letzte Administrator kann nicht geloescht werden");
+            throw new InvalidRequestException("Der letzte Administrator kann nicht gelöscht werden");
         }
         personDAO.delete(person);
     }
@@ -165,10 +165,10 @@ public class PersonService {
     void validateTrainingData(RoleEnum role, LocalDate trainingStart, LocalDate birth) {
         if (role.isLearner()) {
             if (trainingStart == null) {
-                throw new InvalidRequestException("Fuer " + role.getLabel() + " ist der Ausbildungsbeginn Pflicht");
+                throw new InvalidRequestException("Für " + role.getLabel() + " ist der Ausbildungsbeginn Pflicht");
             }
             if (trainingStart.isAfter(LocalDate.now().plusYears(1))) {
-                throw new InvalidRequestException("Der Ausbildungsbeginn darf hoechstens ein Jahr in der Zukunft liegen");
+                throw new InvalidRequestException("Der Ausbildungsbeginn darf höchstens ein Jahr in der Zukunft liegen");
             }
             if (birth != null && !birth.isBefore(trainingStart)) {
                 throw new InvalidRequestException("Das Geburtsdatum muss vor dem Ausbildungsbeginn liegen");
