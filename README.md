@@ -17,8 +17,8 @@ Das passende Frontend liegt in [`Berichtsheft_Frontend`](https://github.com/Gymb
 5. [Konfiguration](#konfiguration)
 6. [REST-API](#rest-api)
 7. [Tests](#tests)
-8. [Projektstruktur](#projektstruktur)
-9. [Versionen und Releases](#versionen-und-releases)
+8. [Versionen und Releases](#versionen-und-releases)
+9. [Projektstruktur](#projektstruktur)
 10. [Docker](#docker)
 11. [Fehlerbehebung](#fehlerbehebung)
 
