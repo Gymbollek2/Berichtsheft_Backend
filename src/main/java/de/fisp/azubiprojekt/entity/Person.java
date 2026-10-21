@@ -102,7 +102,18 @@ public class Person {
         this.beruf = beruf;
     }
 
+    /**
+     * Aktuelles Ausbildungsjahr. Ist ein Ausbildungsbeginn hinterlegt, wird es daraus berechnet
+     * (vor Beginn und im ersten Jahr = 1), sonst der gespeicherte Wert.
+     */
     public int getYearOfTraining() {
+        if (role != null && role.isLearner() && dateOfTrainingStart != null) {
+            LocalDate today = LocalDate.now();
+            if (today.isBefore(dateOfTrainingStart)) {
+                return 1;
+            }
+            return java.time.Period.between(dateOfTrainingStart, today).getYears() + 1;
+        }
         return yearOfTraining;
     }
 

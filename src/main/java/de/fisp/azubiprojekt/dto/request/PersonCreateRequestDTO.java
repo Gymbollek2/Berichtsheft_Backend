@@ -7,15 +7,15 @@ import java.time.LocalDate;
 
 /**
  * Anlegen einer Person inkl. Login. Ist {@code username} leer, wird "vorname.nachname" erzeugt.
+ * Das Ausbildungsjahr wird aus dem Ausbildungsbeginn berechnet.
  */
 public record PersonCreateRequestDTO(
-        @NotBlank String firstName,
-        @NotBlank String lastName,
+        @NotBlank @Size(max = 100) String firstName,
+        @NotBlank @Size(max = 100) String lastName,
         @NotNull RoleEnum role,
-        String username,
-        @NotBlank @Size(min = 8, message = "muss mindestens 8 Zeichen lang sein") String password,
-        String beruf,
-        @Min(0) @Max(5) int yearOfTraining,
+        @Pattern(regexp = "^$|" + ValidationPatterns.USERNAME, message = ValidationPatterns.USERNAME_MESSAGE) String username,
+        @NotBlank @Pattern(regexp = ValidationPatterns.PASSWORD, message = ValidationPatterns.PASSWORD_MESSAGE) String password,
+        @Size(max = 150) String beruf,
         LocalDate dateOfTrainingStart,
         @Past LocalDate dateOfBirth) {
 }

@@ -6,12 +6,11 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 
 public record PersonUpdateRequestDTO(
-        @NotBlank String firstName,
-        @NotBlank String lastName,
+        @NotBlank @Size(max = 100) String firstName,
+        @NotBlank @Size(max = 100) String lastName,
         @NotNull RoleEnum role,
-        @NotBlank String username,
-        String beruf,
-        @Min(0) @Max(5) int yearOfTraining,
+        @NotBlank @Pattern(regexp = ValidationPatterns.USERNAME, message = ValidationPatterns.USERNAME_MESSAGE) String username,
+        @Size(max = 150) String beruf,
         LocalDate dateOfTrainingStart,
         @Past LocalDate dateOfBirth) {
 }

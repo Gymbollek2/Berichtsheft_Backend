@@ -1,5 +1,6 @@
 package de.fisp.azubiprojekt.service;
 
+import de.fisp.azubiprojekt.dao.LernzielDAO;
 import de.fisp.azubiprojekt.dao.PersonDAO;
 import de.fisp.azubiprojekt.dao.UserDAO;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,8 @@ class PersonServiceTest {
     private CurrentUserService currentUserService;
     @Mock
     private PersonLernzielService personLernzielService;
+    @Mock
+    private LernzielDAO lernzielDAO;
 
     @InjectMocks
     private PersonService personService;
@@ -33,6 +36,17 @@ class PersonServiceTest {
     void generatesUsernameWithoutUmlauts() {
         when(userDAO.existsByUsernameIgnoreCase("juergen.mueller-luedenscheidt")).thenReturn(false);
         assertEquals("juergen.mueller-luedenscheidt", personService.generateUsername("Jürgen", "Müller Lüdenscheidt"));
+    }
+
+    @Test
+    void learnersNeedTrainingStartBeforeBirthIsNot() {
+        org.junit.jupiter.api.Assertions.assertThrows(de.fisp.azubiprojekt.exceptions.InvalidRequestException.class,
+                () -> personService.validateTrainingData(de.fisp.azubiprojekt.util.RoleEnum.ROLE_TRAINEE, null, null));
+        org.junit.jupiter.api.Assertions.assertThrows(de.fisp.azubiprojekt.exceptions.InvalidRequestException.class,
+                () -> personService.validateTrainingData(de.fisp.azubiprojekt.util.RoleEnum.ROLE_TRAINEE,
+                        java.time.LocalDate.of(2024, 9, 1), java.time.LocalDate.of(2025, 1, 1)));
+        // Ausbilder brauchen keinen Ausbildungsbeginn
+        personService.validateTrainingData(de.fisp.azubiprojekt.util.RoleEnum.ROLE_TRAINER, null, null);
     }
 
     @Test
