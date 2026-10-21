@@ -2,6 +2,7 @@ package de.fisp.azubiprojekt.service;
 
 import de.fisp.azubiprojekt.dao.BerichtsheftDAO;
 import de.fisp.azubiprojekt.dao.LernzielDAO;
+import de.fisp.azubiprojekt.dao.PersonLernzielDAO;
 import de.fisp.azubiprojekt.dao.WochenberichtDAO;
 import de.fisp.azubiprojekt.dto.request.BerichtsheftSaveRequestDTO;
 import de.fisp.azubiprojekt.dto.response.BerichtsheftEintragDTO;
@@ -16,12 +17,15 @@ import de.fisp.azubiprojekt.exceptions.ActionNotAllowedException;
 import de.fisp.azubiprojekt.exceptions.InvalidRequestException;
 import de.fisp.azubiprojekt.exceptions.ResourceNotFoundException;
 import de.fisp.azubiprojekt.util.BerichtStatusEnum;
+import de.fisp.azubiprojekt.util.EintragArtEnum;
+import de.fisp.azubiprojekt.util.KindEnum;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.time.temporal.WeekFields;
 import java.util.*;
@@ -33,15 +37,21 @@ import java.util.stream.Collectors;
 @Service
 public class BerichtsheftService {
 
+    static final double MAX_HOURS = 10;
+    private static final DateTimeFormatter DE_DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
     private final BerichtsheftDAO berichtsheftDAO;
+    private final PersonLernzielDAO personLernzielDAO;
     private final WochenberichtDAO wochenberichtDAO;
     private final LernzielDAO lernzielDAO;
     private final CurrentUserService currentUserService;
     private final PersonLernzielService personLernzielService;
 
     public BerichtsheftService(BerichtsheftDAO berichtsheftDAO, WochenberichtDAO wochenberichtDAO, LernzielDAO lernzielDAO,
-                               CurrentUserService currentUserService, PersonLernzielService personLernzielService) {
+                               PersonLernzielDAO personLernzielDAO, CurrentUserService currentUserService,
+                               PersonLernzielService personLernzielService) {
         this.berichtsheftDAO = berichtsheftDAO;
+        this.personLernzielDAO = personLernzielDAO;
         this.wochenberichtDAO = wochenberichtDAO;
         this.lernzielDAO = lernzielDAO;
         this.currentUserService = currentUserService;
@@ -97,6 +107,7 @@ public class BerichtsheftService {
     @Transactional
     public BerichtsheftEintragDTO saveEintrag(BerichtsheftSaveRequestDTO request) {
         Person person = requireLearner();
+        validateEintrag(person, request);
         requireEditable(person, request.date());
 
         Berichtsheft eintrag = berichtsheftDAO.findByPersonAndDate(person, request.date())
@@ -107,15 +118,47 @@ public class BerichtsheftService {
                     return neu;
                 });
 
-        List<Lernziel> lernziele = loadLernziele(request.lernzielIds());
+        List<Lernziel> lernziele = loadLernziele(person, request.lernzielIds());
         eintrag.setHours(request.hours());
         eintrag.setArt(request.art());
-        eintrag.setDescription(request.description() == null ? null : request.description().trim());
+        eintrag.setDescription(request.description() == null || request.description().isBlank() ? null : request.description().trim());
         eintrag.setQualifications(lernziele);
 
         Berichtsheft saved = berichtsheftDAO.save(eintrag);
         personLernzielService.markInProgress(person, lernziele);
         return BerichtsheftEintragDTO.from(saved);
+    }
+
+    /**
+     * Fachliche Regeln fuer einen Tageseintrag:
+     * kein Datum in der Zukunft oder vor Ausbildungsbeginn, hoechstens 10 Stunden (ArbZG),
+     * Betriebs- und Schultage brauchen Stunden und eine Beschreibung,
+     * an Urlaubs-, Krankheits- und Feiertagen werden keine Lernziele angegeben.
+     */
+    void validateEintrag(Person person, BerichtsheftSaveRequestDTO request) {
+        LocalDate date = request.date();
+        if (date.isAfter(LocalDate.now())) {
+            throw new InvalidRequestException("Fuer zukuenftige Tage kann noch nichts eingetragen werden");
+        }
+        if (person.getDateOfTrainingStart() != null && date.isBefore(person.getDateOfTrainingStart())) {
+            throw new InvalidRequestException("Der Tag liegt vor deinem Ausbildungsbeginn ("
+                    + person.getDateOfTrainingStart().format(DE_DATE) + ")");
+        }
+        if (request.hours() > MAX_HOURS) {
+            throw new InvalidRequestException("Pro Tag sind hoechstens " + (int) MAX_HOURS + " Stunden erlaubt (Arbeitszeitgesetz)");
+        }
+        boolean anwesend = request.art() == EintragArtEnum.BETRIEB || request.art() == EintragArtEnum.SCHULE;
+        if (anwesend && request.hours() <= 0) {
+            throw new InvalidRequestException("Bitte gib die Stunden fuer " + request.art().getLabel() + " an");
+        }
+        if (anwesend && (request.description() == null || request.description().isBlank())) {
+            throw new InvalidRequestException("Bitte beschreibe deine Taetigkeiten bzw. die Unterrichtsthemen");
+        }
+        boolean abwesend = request.art() == EintragArtEnum.URLAUB || request.art() == EintragArtEnum.KRANK
+                || request.art() == EintragArtEnum.FEIERTAG;
+        if (abwesend && request.lernzielIds() != null && !request.lernzielIds().isEmpty()) {
+            throw new InvalidRequestException("An Urlaubs-, Krankheits- und Feiertagen werden keine Lernziele angegeben");
+        }
     }
 
     @Transactional
@@ -131,15 +174,36 @@ public class BerichtsheftService {
         berichtsheftDAO.delete(eintrag);
     }
 
-    /** Reicht die Woche, in der {@code datum} liegt, zur Pruefung ein. */
+    /**
+     * Reicht die Woche, in der {@code datum} liegt, zur Pruefung ein.
+     * Moeglich ab dem Freitag der Woche und nur, wenn Montag bis Freitag jeweils einen Eintrag haben
+     * (Urlaub, Krankheit und Feiertage werden als solche eingetragen).
+     */
     @Transactional
     public WochenberichtResponseDTO einreichen(LocalDate datum) {
         Person person = requireLearner();
         LocalDate ws = weekStart(datum);
         requireEditable(person, ws);
 
-        if (berichtsheftDAO.findByPersonAndDateBetweenOrderByDateAsc(person, ws, ws.plusDays(6)).isEmpty()) {
-            throw new InvalidRequestException("Die Woche enthaelt noch keine Eintraege");
+        LocalDate freitag = ws.plusDays(4);
+        if (LocalDate.now().isBefore(freitag)) {
+            throw new InvalidRequestException("Die Woche kann erst ab Freitag, " + freitag.format(DE_DATE) + ", eingereicht werden");
+        }
+
+        Set<LocalDate> erfasst = berichtsheftDAO.findByPersonAndDateBetweenOrderByDateAsc(person, ws, ws.plusDays(6)).stream()
+                .map(Berichtsheft::getDate)
+                .collect(Collectors.toSet());
+        List<String> fehlend = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            LocalDate d = ws.plusDays(i);
+            boolean vorBeginn = person.getDateOfTrainingStart() != null && d.isBefore(person.getDateOfTrainingStart());
+            if (!vorBeginn && !erfasst.contains(d)) {
+                fehlend.add(d.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.GERMAN));
+            }
+        }
+        if (!fehlend.isEmpty()) {
+            throw new InvalidRequestException("Es fehlen noch Eintraege fuer: " + String.join(", ", fehlend)
+                    + ". Trage Urlaub, Krankheit oder Feiertage bitte als solche ein.");
         }
 
         Wochenbericht bericht = wochenberichtDAO.findByPersonAndWeekStart(person, ws)
@@ -242,7 +306,8 @@ public class BerichtsheftService {
         return bericht;
     }
 
-    private List<Lernziel> loadLernziele(List<Long> ids) {
+    /** Laedt die angegebenen Lernziele; erlaubt sind nur Feinlernziele, die der Person zugeordnet sind. */
+    private List<Lernziel> loadLernziele(Person person, List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
@@ -250,6 +315,15 @@ public class BerichtsheftService {
         List<Lernziel> found = lernzielDAO.findAllById(unique);
         if (found.size() != unique.size()) {
             throw new InvalidRequestException("Mindestens ein angegebenes Lernziel existiert nicht");
+        }
+        for (Lernziel l : found) {
+            if (l.getKind() != KindEnum.KIND_SPECIFIC) {
+                throw new InvalidRequestException("Taetigkeiten werden Feinlernzielen zugeordnet – '" + l.getTitle()
+                        + "' ist ein " + l.getKind().getLabel());
+            }
+            if (!personLernzielDAO.existsByPersonAndLernziel(person, l)) {
+                throw new InvalidRequestException("Das Lernziel '" + l.getTitle() + "' ist dir nicht zugeordnet");
+            }
         }
         return found;
     }
