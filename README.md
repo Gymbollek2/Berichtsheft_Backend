@@ -18,8 +18,9 @@ Das passende Frontend liegt in [`Berichtsheft_Frontend`](https://github.com/Gymb
 6. [REST-API](#rest-api)
 7. [Tests](#tests)
 8. [Projektstruktur](#projektstruktur)
-9. [Docker](#docker)
-10. [Fehlerbehebung](#fehlerbehebung)
+9. [Versionen und Releases](#versionen-und-releases)
+10. [Docker](#docker)
+11. [Fehlerbehebung](#fehlerbehebung)
 
 ---
 
@@ -221,6 +222,14 @@ mvnw.cmd test        # Windows
 - **API-Integrationstest** (`BerichtsheftApiTest`): Er startet die komplette Anwendung mit In-Memory-Datenbank und prüft Login, Rechte, Personen anlegen, CSV und den kompletten Berichtsheft-Workflow (erfassen → einreichen → zurückgeben → nachbessern → abzeichnen).
 
 Die Tests laufen zusätzlich bei jedem Push automatisch per **GitHub Actions** (Tab *Actions* im Repository).
+
+## Versionen und Releases
+
+Tags und GitHub-Releases werden automatisch vom Workflow `.github/workflows/release.yml` erstellt:
+
+1. `<version>` in der `pom.xml` erhöhen (z. B. `1.1.0`).
+2. Im `CHANGELOG.md` einen Abschnitt `## [1.1.0] – Datum` ergänzen.
+3. Committen und auf `main` pushen. Wenn Build und Tests grün sind, entstehen Tag `v1.1.0` und ein Release mit der JAR-Datei.
 
 ## Projektstruktur
 

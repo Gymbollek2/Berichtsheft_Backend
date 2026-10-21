@@ -1,0 +1,59 @@
+name: Release
+
+# Legt automatisch einen Git-Tag "v<Version>" und ein GitHub-Release an,
+# sobald auf main eine neue Version in der pom.xml steht.
+# Neue Version veroeffentlichen: <version> in pom.xml erhoehen + Abschnitt im CHANGELOG.md ergaenzen.
+
+on:
+  push:
+    branches: [main]
+    paths: [pom.xml, CHANGELOG.md, .github/workflows/release.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Version ermitteln
+        id: version
+        run: |
+          VERSION=$(sed -n '0,/<artifactId>berichtsheft-backend<\/artifactId>/d; s/.*<version>\(.*\)<\/version>.*/\1/p' pom.xml | head -1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Version: $VERSION"
+
+      - name: JDK 21 einrichten
+        if: steps.version.outputs.exists == 'false'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Bauen und testen
+        if: steps.version.outputs.exists == 'false'
+        run: mvn -B verify
+
+      - name: Tag und Release anlegen
+        if: steps.version.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          awk -v v="$VERSION" '$0 ~ "^## \\[" v "\\]" {f=1; next} /^## \[/ {f=0} f' CHANGELOG.md > notes.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "Version $VERSION"
+          git push origin "v$VERSION"
+          gh release create "v$VERSION" target/*.jar --title "v$VERSION" --notes-file notes.md
