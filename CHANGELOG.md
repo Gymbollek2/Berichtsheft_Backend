@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.1.0] – 2026-10-21
+
+### Neu
+- **Lernziel-Hierarchie**: Richtlernziel ohne übergeordnetes Ziel, Groblernziel unter Richtlernziel,
+  Feinlernziel unter Groblernziel, auch beim CSV-Import. Neuer Endpunkt `/v1/lernziel/parent-options`.
+- **Berechneter Status**: Grob- und Richtlernziele ergeben sich aus ihren Unterzielen,
+  der Fortschritt zählt nur Feinlernziele.
+- **HTTPS**: Backend nur noch auf https://localhost:8443. Ein Entwicklungszertifikat wird beim ersten Start erzeugt.
+- Fachregeln fürs Berichtsheft: keine Zukunft, max. 10 h/Tag, Beschreibung Pflicht,
+  nur Feinlernziele, Einreichen ab Freitag mit vollständiger Woche.
+- Fachregeln für Personen: Passwortregeln, Benutzernamen-Format, Ausbildungsbeginn Pflicht,
+  berechnetes Ausbildungsjahr, Schutz des letzten Admins.
+
+### Geändert
+- Lernziele mit Unterzielen oder Verwendung in geprüften Wochen können nicht mehr gelöscht werden.
+- Standard-Port 8443 statt 8080, CORS-Standard `https://localhost:4200`.
+
 ## [1.0.0] – 2026-10-21
 
 Erste vollständige Version des Berichtsheft-Backends.

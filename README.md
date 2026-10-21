@@ -11,10 +11,10 @@ Das passende Frontend liegt in [`Berichtsheft_Frontend`](https://github.com/Gymb
 ## Inhalt
 
 1. [Funktionen](#funktionen)
-2. [Rollen und Rechte](#rollen-und-rechte)
+2. [Fachregeln](#fachregeln) und [Rollen](#rollen-und-rechte)
 3. [Lokal starten – Schritt für Schritt](#lokal-starten--schritt-für-schritt)
 4. [Demo-Zugänge](#demo-zugänge)
-5. [Konfiguration](#konfiguration)
+5. [Konfiguration und HTTPS](#konfiguration)
 6. [REST-API](#rest-api)
 7. [Tests](#tests)
 8. [Versionen und Releases](#versionen-und-releases)
@@ -26,11 +26,12 @@ Das passende Frontend liegt in [`Berichtsheft_Frontend`](https://github.com/Gymb
 
 ## Funktionen
 
+- **Nur HTTPS** auf Port 8443. Für die lokale Entwicklung erzeugt das Backend beim ersten Start automatisch ein Zertifikat.
 - **Login mit JWT**: Benutzername und Passwort (BCrypt-gehasht) ergeben ein Token. Nach einer Passwortänderung werden alle alten Tokens ungültig.
 - **Benutzerrollen**: Azubi, dualer Student, Ausbilder und Admin, jeweils mit eigenen Rechten (siehe unten).
 - **Personenverwaltung**: Personen mit Login anlegen, bearbeiten, löschen und Passwörter zurücksetzen. Der Benutzername wird automatisch als `vorname.nachname` erzeugt.
-- **Lernziele**: Hierarchie aus Richt-, Grob- und Feinlernzielen. Neue Lernziele werden automatisch allen Azubis zugewiesen. **CSV-Import und -Export** sind möglich.
-- **Lernfortschritt**: Jedes Lernziel hat pro Azubi einen Status (*Offen*, *In Bearbeitung*, *Erreicht*). Wird ein Lernziel im Berichtsheft angegeben, wechselt es automatisch auf *In Bearbeitung*.
+- **Lernziele**: feste Hierarchie Richtlernziel → Groblernziel → Feinlernziel (siehe [Fachregeln](#fachregeln)). Neue Lernziele werden automatisch allen Azubis zugewiesen. **CSV-Import und -Export** sind möglich.
+- **Lernfortschritt**: Der Ausbilder setzt den Status der Feinlernziele (*Offen*, *In Bearbeitung*, *Erreicht*). Grob- und Richtlernziele werden daraus berechnet. Wird ein Feinlernziel im Berichtsheft angegeben, wechselt es automatisch auf *In Bearbeitung*.
 - **Berichtsheft**:
   - Tageseinträge mit Art (Betrieb, Berufsschule, Urlaub, Krank …), Stunden, Tätigkeiten und Lernzielen
   - Wochenansicht mit Kalenderwoche und Stundensumme
@@ -38,6 +39,39 @@ Das passende Frontend liegt in [`Berichtsheft_Frontend`](https://github.com/Gymb
   - Eingereichte und abgezeichnete Wochen sind gesperrt.
 - **Demo-Daten** beim ersten Start, damit man sofort loslegen kann.
 - Einheitliche **Fehlermeldungen** als JSON (`status`, `message`, `timestamp`).
+
+## Fachregeln
+
+**Lernziele**
+
+| Art | Übergeordnetes Lernziel |
+|---|---|
+| Richtlernziel | keines (oberste Ebene) |
+| Groblernziel | genau ein Richtlernziel (Pflicht) |
+| Feinlernziel | genau ein Groblernziel (Pflicht) |
+
+- `GET /v1/lernziel/parent-options?kind=…` liefert nur die passenden übergeordneten Lernziele.
+- Titel sind je Ebene eindeutig.
+- Die Art lässt sich nur ändern, solange keine Unterziele existieren.
+- Löschen ist nur ohne Unterziele möglich. Ebenfalls gesperrt ist es, wenn das Lernziel in eingereichten oder abgezeichneten Wochen verwendet wird.
+- Status übergeordneter Lernziele: alle Unterziele erreicht → *Erreicht*, mindestens eines begonnen → *In Bearbeitung*, sonst *Offen*. Der Fortschritt in Prozent zählt nur Lernziele ohne Unterziele.
+
+**Berichtsheft**
+
+- Keine Einträge für zukünftige Tage und keine vor dem Ausbildungsbeginn.
+- Höchstens 10 Stunden pro Tag (Arbeitszeitgesetz).
+- Betrieb und Berufsschule brauchen Stunden und eine Beschreibung.
+- Tätigkeiten werden nur zugeordneten **Feinlernzielen** zugewiesen. An Urlaubs-, Krankheits- und Feiertagen gibt es keine Lernziele.
+- Einreichen ist ab dem Freitag der Woche möglich und nur, wenn Montag bis Freitag jeweils einen Eintrag haben.
+- Eingereichte und abgezeichnete Wochen sind gesperrt. Zurückgegebene Wochen sind wieder bearbeitbar.
+
+**Personen**
+
+- Passwörter: mindestens 8 Zeichen mit Buchstaben und Ziffern.
+- Benutzernamen: Kleinbuchstaben, Ziffern, `.`, `-`, `_`.
+- Azubis brauchen einen Ausbildungsbeginn. Das Ausbildungsjahr wird daraus berechnet.
+- Niemand kann sich selbst löschen oder die eigene Rolle ändern. Der letzte Admin bleibt immer erhalten.
+- Azubis mit Berichtsheft-Einträgen können nicht zu Ausbildern oder Admins gemacht werden.
 
 ## Rollen und Rechte
 
@@ -80,7 +114,7 @@ cd Berichtsheft_Backend
 1. *File → Open…* → den Ordner `Berichtsheft_Backend` wählen. IntelliJ erkennt das Maven-Projekt und lädt die Abhängigkeiten. Das dauert beim ersten Mal ein paar Minuten.
 2. Unter *File → Project Structure → Project* ein **SDK 21 oder neuer** einstellen.
 3. Die Klasse `src/main/java/de/fisp/azubiprojekt/BerichtsheftApplication.java` öffnen und auf den grünen ▶-Pfeil neben `main` klicken.
-4. In der Konsole erscheint `Started BerichtsheftApplication …` und darüber die **Demo-Logins**.
+4. In der Konsole erscheint `Started BerichtsheftApplication …` und darüber die **Demo-Logins**. Beim allerersten Start steht dort außerdem `Selbstsigniertes Entwicklungszertifikat erzeugt`.
 
 ### 3b. Starten über die Kommandozeile
 
@@ -97,15 +131,19 @@ mvn spring-boot:run
 
 ### 4. Prüfen, ob es läuft
 
-- <http://localhost:8080/v1/lernziel> sollte mit **401** und `{"status":401,"message":"Nicht angemeldet …"}` antworten. Das ist richtig, weil ohne Login nichts abrufbar ist.
-- Die Datenbank-Oberfläche liegt unter <http://localhost:8080/h2-console>
+- Öffne <https://localhost:8443/v1/lernziel>. Der Browser warnt einmal vor dem selbstsignierten Zertifikat. Unter *Erweitert → Weiter zu localhost* bestätigen.
+  Die Antwort ist **401** mit `{"status":401,"message":"Nicht angemeldet …"}`. Das ist richtig, weil ohne Login nichts abrufbar ist.
+- Die Datenbank-Oberfläche liegt unter <https://localhost:8443/h2-console>
   (JDBC-URL `jdbc:h2:file:./data/berichtsheft`, User `sa`, Passwort leer).
+- HTTP (`http://localhost:8080`) gibt es bewusst nicht mehr.
 
 Anschließend das **Frontend** starten, siehe [Frontend-README](https://github.com/Gymbollek2/Berichtsheft_Frontend#lokal-starten--schritt-für-schritt).
 
 ### Datenbank zurücksetzen
 
-Die Daten liegen in `./data/berichtsheft.mv.db`. Backend stoppen, den Ordner `data` löschen und neu starten. Danach werden die Demo-Daten neu angelegt.
+Die Daten liegen in `./data/berichtsheft.mv.db`, das Entwicklungszertifikat in `./data/ssl`. Backend stoppen, den Ordner `data` löschen und neu starten. Danach werden Demo-Daten und Zertifikat neu angelegt.
+
+> **Update von Version 1.0:** Die neuen Hierarchieregeln gelten auch für bestehende Daten. Am einfachsten löschst du einmal den Ordner `data`.
 
 ## Demo-Zugänge
 
@@ -120,6 +158,17 @@ Werden beim **ersten Start mit leerer Datenbank** automatisch angelegt:
 
 > ⚠️ Nur für die lokale Entwicklung. Für einen echten Betrieb `DEMO_DATA=false` setzen, siehe unten.
 
+### Vertrauenswürdiges Zertifikat (optional, ohne Browser-Warnung)
+
+Mit [mkcert](https://github.com/FiloSottile/mkcert) (Windows: `winget install FiloSottile.mkcert`) erzeugst du ein Zertifikat, dem dein Rechner vertraut:
+
+```bash
+mkcert -install
+mkcert -pkcs12 -p12-file data/ssl/berichtsheft-dev.p12 localhost 127.0.0.1
+```
+
+mkcert verwendet als Passwort `changeit`. Deshalb vor dem Start `SSL_KEYSTORE_PASSWORD=changeit` setzen, in IntelliJ unter *Run Configuration → Environment variables*.
+
 ---
 
 ## Konfiguration
@@ -128,12 +177,16 @@ Alle Werte stehen in `src/main/resources/application.properties` und lassen sich
 
 | Variable | Standard | Bedeutung |
 |---|---|---|
-| `PORT` | `8080` | HTTP-Port |
+| `PORT` | `8443` | HTTPS-Port |
+| `SSL_KEYSTORE` | `file:./data/ssl/berichtsheft-dev.p12` (wird erzeugt) | Eigenes Zertifikat als PKCS12, z. B. `file:/etc/berichtsheft/server.p12` |
+| `SSL_KEYSTORE_PASSWORD` | `berichtsheft-dev` | Passwort des Keystores |
+| `SSL_KEYSTORE_TYPE` | `PKCS12` | `PKCS12` oder `JKS` |
+| `SSL_ENABLED` | `true` | nur für Sonderfälle (z. B. TLS am Reverse Proxy) auf `false` setzen |
 | `DB_URL` | `jdbc:h2:file:./data/berichtsheft;AUTO_SERVER=TRUE` | JDBC-URL der Datenbank |
 | `DB_USER` / `DB_PASSWORD` | `sa` / leer | Datenbank-Zugang |
 | `JWT_SECRET` | Entwicklungsschlüssel | **In Produktion unbedingt setzen** (langer Zufallswert) |
 | `JWT_EXPIRATION_HOURS` | `12` | Gültigkeit eines Logins |
-| `CORS_ORIGINS` | `http://localhost:4200` | Erlaubte Frontend-Adressen (kommagetrennt) |
+| `CORS_ORIGINS` | `https://localhost:4200` | Erlaubte Frontend-Adressen (kommagetrennt) |
 | `DEMO_DATA` | `true` | Demo-Daten bei leerer DB anlegen |
 
 > **Hinweis:** Die frühere GitLab-OAuth-Anbindung (Client-ID/-Secret von `gitlab.fisp.dev`) und die LDAP-Reste wurden entfernt. Die Zugangsdaten standen im Klartext im Code und dürfen nicht in ein öffentliches Repository. Falls ihr den GitLab-Login wieder braucht, solltet ihr das alte Client-Secret in GitLab **neu erzeugen** und das neue nur per Umgebungsvariable übergeben.
@@ -169,7 +222,8 @@ Alle Endpunkte außer dem Login brauchen den Header `Authorization: Bearer <acce
 | Methode | Pfad | Beschreibung |
 |---|---|---|
 | GET | `/` `?kind=KIND_BROAD` | alle Lernziele |
-| GET | `/{id}` | ein Lernziel |
+| GET | `/{id}` | ein Lernziel (inkl. Anzahl Unterziele) |
+| GET | `/parent-options?kind=KIND_SPECIFIC` | erlaubte übergeordnete Lernziele für eine Art |
 | POST / PUT / DELETE | `/` bzw. `/{id}` | verwalten (Ausbilder/Admin): `{ title, description?, kind, parentId? }` |
 | GET | `/export` | CSV-Download |
 | POST | `/import` | CSV-Upload (multipart, Feld `file`) |
@@ -194,7 +248,7 @@ Für `art` gehen `Richtlernziel`, `Groblernziel` und `Feinlernziel`, die Kurzfor
 | GET | `/person/{id}` | Lernziele einer Person |
 | GET | `/person/{id}/fortschritt` | Fortschritt einer Person |
 | GET | `/fortschritt` | Fortschritt aller Azubis (Ausbilder/Admin) |
-| PUT | `/{id}/status` | `{ "status": "STATUS_DONE" }` (Ausbilder/Admin) |
+| PUT | `/{id}/status` | `{ "status": "STATUS_DONE" }` (Ausbilder/Admin, nur Lernziele ohne Unterziele) |
 
 ### Berichtsheft – `/v1/berichtsheft`
 
@@ -218,8 +272,8 @@ mvnw.cmd test        # Windows
 ./mvnw test          # macOS / Linux
 ```
 
-- **Unit-Tests**: Lernziel-Arten, CSV-Parser, Kalenderwochen-Logik, Benutzernamen-Erzeugung
-- **API-Integrationstest** (`BerichtsheftApiTest`): Er startet die komplette Anwendung mit In-Memory-Datenbank und prüft Login, Rechte, Personen anlegen, CSV und den kompletten Berichtsheft-Workflow (erfassen → einreichen → zurückgeben → nachbessern → abzeichnen).
+- **Unit-Tests**: Lernziel-Hierarchie, CSV-Parser, Kalenderwochen, Benutzernamen, Ausbildungsdaten
+- **API-Integrationstest** (`BerichtsheftApiTest`): Er startet die komplette Anwendung mit In-Memory-Datenbank und prüft Login, Rechte, Personenregeln, Lernziel-Hierarchie, berechneten Status, Berichtsheft-Regeln, CSV und den kompletten Workflow (erfassen → einreichen → zurückgeben → nachbessern → abzeichnen).
 
 Die Tests laufen zusätzlich bei jedem Push automatisch per **GitHub Actions** (Tab *Actions* im Repository).
 
@@ -250,7 +304,7 @@ src/main/java/de/fisp/azubiprojekt
 
 ```bash
 docker build -t berichtsheft-backend .
-docker run -p 8080:8080 -e JWT_SECRET=bitte-aendern -v berichtsheft-data:/app/data berichtsheft-backend
+docker run -p 8443:8443 -e JWT_SECRET=bitte-aendern -v berichtsheft-data:/app/data berichtsheft-backend
 ```
 
 ## Fehlerbehebung
@@ -258,6 +312,8 @@ docker run -p 8080:8080 -e JWT_SECRET=bitte-aendern -v berichtsheft-data:/app/da
 | Problem | Lösung |
 |---|---|
 | `release version 21 not supported` | Es läuft ein älteres JDK. JDK 21+ installieren und in IntelliJ als Projekt-SDK einstellen. |
-| `Port 8080 already in use` | Anderes Programm beenden oder mit `PORT=8081` starten. Dann im Frontend `proxy.conf.json` anpassen. |
+| `Port 8443 already in use` | Anderes Programm beenden oder mit `PORT=8444` starten. Dann im Frontend `proxy.conf.json` anpassen. |
+| `keytool fehlgeschlagen` beim Start | Es läuft nur ein JRE ohne `keytool`. Ein vollständiges JDK 21 verwenden oder ein eigenes Zertifikat per `SSL_KEYSTORE` angeben. |
+| Browser meldet „Verbindung nicht sicher“ | Erwartet beim selbstsignierten Zertifikat: einmal bestätigen oder mkcert verwenden (siehe oben). |
 | Login klappt nicht mehr nach Code-Änderungen | Ordner `data` löschen, damit die Demo-Daten neu angelegt werden. |
 | `mvnw` lädt nicht | IntelliJ verwenden (bringt Maven mit) oder Maven installieren und `mvn spring-boot:run` nutzen. |
