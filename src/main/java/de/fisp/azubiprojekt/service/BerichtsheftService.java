@@ -107,7 +107,7 @@ public class BerichtsheftService {
                     w == null ? null : w.getId(), person.getId(), person.getFullName(), ws,
                     kalenderwoche(ws), wochenJahr(ws), status, status.getLabel(),
                     tage.stream().mapToDouble(Berichtsheft::getHours).sum(), tage.size(),
-                    w == null ? null : w.getEingereichtAm(), w == null ? null : w.getGeprueftAm());
+                    w == null ? null : w.getEingereichtAm(), w == null ? null : geprueftAm(w));
         }).filter(Objects::nonNull).toList();
     }
 
@@ -315,12 +315,25 @@ public class BerichtsheftService {
                 ws, we, kalenderwoche(ws), wochenJahr(ws),
                 status, status.getLabel(), editierbar,
                 bericht.map(Wochenbericht::getKommentar).orElse(null),
-                bericht.map(Wochenbericht::getGeprueftVon).orElse(null),
+                bericht.map(BerichtsheftService::geprueftVon).orElse(null),
                 bericht.map(Wochenbericht::getEingereichtAm).orElse(null),
-                bericht.map(Wochenbericht::getGeprueftAm).orElse(null),
+                bericht.map(BerichtsheftService::geprueftAm).orElse(null),
                 eintraege.values().stream().mapToDouble(Berichtsheft::getHours).sum(),
                 sichtbar,
                 tage);
+    }
+
+    /**
+     * Pruefer und Pruefdatum gehoeren zur letzten Pruefung. Ist die Woche danach erneut eingereicht worden,
+     * steht die neue Pruefung noch aus – dann werden sie nicht angezeigt. Der Kommentar bleibt erhalten,
+     * das Frontend zeigt ihn als "Kommentar der letzten Rueckgabe".
+     */
+    private static String geprueftVon(Wochenbericht w) {
+        return w.getStatus() == BerichtStatusEnum.EINGEREICHT ? null : w.getGeprueftVon();
+    }
+
+    private static LocalDateTime geprueftAm(Wochenbericht w) {
+        return w.getStatus() == BerichtStatusEnum.EINGEREICHT ? null : w.getGeprueftAm();
     }
 
     private static String woche(LocalDate ws) {
@@ -342,7 +355,7 @@ public class BerichtsheftService {
         return new WochenberichtSummaryDTO(w.getId(), w.getPerson().getId(), w.getPerson().getFullName(), ws,
                 kalenderwoche(ws), wochenJahr(ws), w.getStatus(), w.getStatus().getLabel(),
                 tage.stream().mapToDouble(Berichtsheft::getHours).sum(), tage.size(),
-                w.getEingereichtAm(), w.getGeprueftAm());
+                w.getEingereichtAm(), geprueftAm(w));
     }
 
     private Person requireLearner() {

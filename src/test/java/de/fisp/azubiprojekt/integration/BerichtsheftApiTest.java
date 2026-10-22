@@ -340,7 +340,13 @@ class BerichtsheftApiTest {
         saveEintrag(azubi, montag.plusDays(1), 6, "SCHULE", "Berufsschule: Datenbanken", "").andExpect(status().isOk());
         mvc.perform(post("/v1/berichtsheft/woche/einreichen").header("Authorization", azubi)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"datum\":\"" + montag + "\"}"))
-                .andExpect(jsonPath("$.status").value("EINGEREICHT"));
+                .andExpect(jsonPath("$.status").value("EINGEREICHT"))
+                // Die neue Pruefung steht noch aus: kein Pruefer/Pruefdatum, der Kommentar der Rueckgabe bleibt
+                .andExpect(jsonPath("$.geprueftVon").value(nullValue()))
+                .andExpect(jsonPath("$.geprueftAm").value(nullValue()))
+                .andExpect(jsonPath("$.kommentar").value("Dienstag war Berufsschule"));
+        mvc.perform(get("/v1/berichtsheft/historie").header("Authorization", azubi))
+                .andExpect(jsonPath("$[?(@.id == " + wochenId + ")].geprueftAm", contains(nullValue())));
         mvc.perform(post("/v1/berichtsheft/woche/" + wochenId + "/abzeichnen").header("Authorization", trainer)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"kommentar\":\"Passt\"}"))
                 .andExpect(jsonPath("$.status").value("ABGEZEICHNET"))
