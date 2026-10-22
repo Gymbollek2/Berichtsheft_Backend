@@ -4,7 +4,7 @@ Backend und Frontend laufen zusammen als **ein Windows-Dienst** („Berichtsheft
 das Frontend mit aus, die Seite ist danach im Netzwerk erreichbar unter
 
 ```
-https://<Servername>:8443/
+https://<Servername>:5016/
 ```
 
 Der Dienst startet automatisch mit Windows und nach einem Absturz neu.
@@ -47,7 +47,7 @@ Optionen: `-FrontendPfad D:\…\Berichtsheft_Frontend` (anderer Ort), `-OhneTest
 
 Das Skript kopiert alles nach **`F:\Program Files\Berichtsheft`** (anderer Ort: `-Zielordner`), erzeugt ein zufälliges JWT-Geheimnis, öffnet den
 Port in der Firewall (Domänen- und private Netzwerke), installiert den Dienst und startet ihn.
-Am Ende steht die Adresse, z. B. `https://srv-ausbildung.firma.local:8443/`.
+Am Ende steht die Adresse, z. B. `https://srv-ausbildung.firma.local:5016/`.
 
 Nach der ersten Anmeldung das Passwort unter **Profil** ändern und weitere Ausbilder und Azubis unter
 **Personen** anlegen. Die Lernziele des Ausbildungsrahmenplans sind bereits eingespielt.
@@ -64,7 +64,7 @@ Nach der ersten Anmeldung das Passwort unter **Profil** ändern und weitere Ausb
 
 | Option | Bedeutung |
 |---|---|
-| `-Port` | HTTPS-Port (Standard 8443). Mit 443 entfällt die Portangabe in der Adresse. |
+| `-Port` | HTTPS-Port (Standard 5016). Mit 443 entfällt die Portangabe in der Adresse. |
 | `-Hostnamen` | weitere Namen/DNS-Aliase, unter denen der Server aufgerufen wird |
 | `-ZertifikatDatei` | eigenes Zertifikat (.pfx), siehe unten – Passwort wird abgefragt |
 | `-OhneHttps` | nur HTTP, wenn ein IIS/Reverse-Proxy davor HTTPS übernimmt |
@@ -109,7 +109,7 @@ Zertifikat installieren → Lokaler Computer). Danach Browser neu starten. Wird 
 erzeugt, muss es erneut verteilt werden.
 
 In beiden Fällen die Seite **unter dem Namen aus dem Zertifikat** aufrufen, also z. B.
-`https://srv-ausbildung.firma.local:8443/` und nicht per IP-Adresse oder Kurzname, sofern der nicht
+`https://srv-ausbildung.firma.local:5016/` und nicht per IP-Adresse oder Kurzname, sofern der nicht
 ebenfalls im Zertifikat steht.
 
 Anderer Servername beim selbstsignierten Zertifikat: `F:\Program Files\Berichtsheft\data\ssl\berichtsheft-dev.p12`
@@ -142,7 +142,7 @@ Bei einer Neuinstallation: `install.cmd -Sso -AusbilderBenutzer <eigener Windows
 | Was | Warum / wie |
 |---|---|
 | Server ist **Mitglied der Domäne** | Nur dann kann er Windows-Anmeldungen prüfen. Der Dienst läuft als „Lokales System“ – nichts weiter einzurichten. |
-| Seite über den **vollen Servernamen** aufrufen, z. B. `https://srv-ausbildung.firma.local:8443/` | Für den Rechnernamen gibt es den Kerberos-Eintrag (SPN) automatisch. Bei einem **DNS-Alias** (z. B. `berichtsheft.firma.local`) muss die IT ihn anlegen: `setspn -S HTTP/berichtsheft.firma.local SERVERNAME` |
+| Seite über den **vollen Servernamen** aufrufen, z. B. `https://srv-ausbildung.firma.local:5016/` | Für den Rechnernamen gibt es den Kerberos-Eintrag (SPN) automatisch. Bei einem **DNS-Alias** (z. B. `berichtsheft.firma.local`) muss die IT ihn anlegen: `setspn -S HTTP/berichtsheft.firma.local SERVERNAME` |
 | Seite ist im Browser als **Intranet** eingestuft | Edge und Chrome schicken die Windows-Anmeldung nur an Intranet-Seiten. Per Gruppenrichtlinie „Liste der Site-zu-Zonen-Zuweisungen“: `https://srv-ausbildung.firma.local` → Zone `1` (Lokales Intranet). Alternativ die Richtlinie `AuthServerAllowlist` für Edge/Chrome. Firefox: `network.negotiate-auth.trusted-uris`. |
 | Zertifikat ohne Warnung | siehe Abschnitt 3 – bei Zertifikatsfehlern schicken Browser keine Windows-Anmeldung. |
 
@@ -175,8 +175,8 @@ Administratoren und den Dienst (SYSTEM) lesbar, weil sie das JWT-Geheimnis bzw. 
 
 | Problem | Lösung |
 |---|---|
-| Seite vom eigenen PC nicht erreichbar, auf dem Server schon | Firewall: Ist das Netzwerkprofil des Servers „Öffentlich“? Dann Regel „Berichtsheft (TCP 8443)“ in `wf.msc` auch für „Öffentlich“ freigeben. |
-| Dienst startet nicht | `logs\berichtsheft.log` ansehen. Häufig: Port belegt (`netstat -ano | findstr :8443`) → `uninstall.cmd`, dann `install.cmd -Port 9443`. |
+| Seite vom eigenen PC nicht erreichbar, auf dem Server schon | Firewall: Ist das Netzwerkprofil des Servers „Öffentlich“? Dann Regel „Berichtsheft (TCP 5016)“ in `wf.msc` auch für „Öffentlich“ freigeben. |
+| Dienst startet nicht | `logs\berichtsheft.log` ansehen. Häufig: Port belegt (`netstat -ano | findstr :5016`) → `uninstall.cmd`, dann `install.cmd -Port 9443`. |
 | „JWT_SECRET muss gesetzt sein“ | Dienst wurde ohne `install.cmd` eingerichtet – `JWT_SECRET` in `berichtsheft-service.xml` setzen. |
 | Erster Ausbilder kann sich nicht anmelden | In `logs\berichtsheft.log` nach „Erster Ausbilder“ suchen. Passwort zurücksetzen geht über einen weiteren Ausbilder oder Neuinstallation mit leerem `data`-Ordner. |
 | Nach Update alte Oberfläche | Im Browser Strg+F5. |

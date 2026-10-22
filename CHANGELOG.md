@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unveröffentlicht]
+
+### Geändert
+- Standard-Port **5016** statt 8443 (`PORT`), auch für `install.cmd`. Bestehende Installationen behalten
+  bei `update.cmd` ihren Port.
+
 ## [1.6.1] – 2026-10-22
 
 ### Behoben

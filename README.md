@@ -27,7 +27,7 @@ Das passende Frontend liegt in [`Berichtsheft_Frontend`](https://github.com/Gymb
 
 ## Funktionen
 
-- **Nur HTTPS** auf Port 8443. Für die lokale Entwicklung erzeugt das Backend beim ersten Start automatisch ein Zertifikat.
+- **Nur HTTPS** auf Port 5016. Für die lokale Entwicklung erzeugt das Backend beim ersten Start automatisch ein Zertifikat.
 - **Login mit JWT**: Benutzername und Passwort (BCrypt-gehasht) ergeben ein Token. Nach einer Passwortänderung werden alle alten Tokens ungültig.
 - **Benutzerrollen**: Azubi, dualer Student und Ausbilder, jeweils mit eigenen Rechten (siehe unten). Ausbilder dürfen alles.
 - **Personenverwaltung**: Personen mit Login anlegen, bearbeiten, löschen und Passwörter zurücksetzen. Der Benutzername wird automatisch als `vorname.nachname` erzeugt.
@@ -134,9 +134,9 @@ mvn spring-boot:run
 
 ### 4. Prüfen, ob es läuft
 
-- Öffne <https://localhost:8443/v1/lernziel>. Der Browser warnt einmal vor dem selbstsignierten Zertifikat. Unter *Erweitert → Weiter zu localhost* bestätigen.
+- Öffne <https://localhost:5016/v1/lernziel>. Der Browser warnt einmal vor dem selbstsignierten Zertifikat. Unter *Erweitert → Weiter zu localhost* bestätigen.
   Die Antwort ist **401** mit `{"status":401,"message":"Nicht angemeldet …"}`. Das ist richtig, weil ohne Login nichts abrufbar ist.
-- Die Datenbank-Oberfläche liegt unter <https://localhost:8443/h2-console>
+- Die Datenbank-Oberfläche liegt unter <https://localhost:5016/h2-console>
   (JDBC-URL `jdbc:h2:file:./data/berichtsheft`, User `sa`, Passwort leer).
 - HTTP (`http://localhost:8080`) gibt es bewusst nicht mehr.
 
@@ -179,7 +179,7 @@ Alle Werte stehen in `src/main/resources/application.properties` und lassen sich
 
 | Variable | Standard | Bedeutung |
 |---|---|---|
-| `PORT` | `8443` | HTTPS-Port |
+| `PORT` | `5016` | HTTPS-Port |
 | `SSL_KEYSTORE` | `file:./data/ssl/berichtsheft-dev.p12` (wird erzeugt) | Eigenes Zertifikat als PKCS12, z. B. `file:/etc/berichtsheft/server.p12` |
 | `SSL_KEYSTORE_PASSWORD` | `berichtsheft-dev` | Passwort des Keystores |
 | `SSL_KEYSTORE_TYPE` | `PKCS12` | `PKCS12` oder `JKS` |
@@ -193,7 +193,7 @@ Alle Werte stehen in `src/main/resources/application.properties` und lassen sich
 | `SSL_HOSTNAMES` | – | weitere Namen für das selbstsignierte Zertifikat (kommagetrennt); Rechnername und IPs kommen automatisch dazu |
 | `FRONTEND_DIR` | `file:./frontend/` | Ordner mit dem gebauten Frontend, das unter derselben Adresse ausgeliefert wird |
 | `RAHMENPLAN_IMPORT` | `true` | Ausbildungsrahmenplan FIAE einmalig einspielen |
-| `SSO_ENABLED` | `false` | Windows-Anmeldung (Kerberos/NTLM): Zugriff nur, wenn der Windows-Anmeldename (sAMAccountName) als Benutzername in der Personenliste steht. Server muss Domänenmitglied sein, siehe `deploy/SERVER-ANLEITUNG.md` |
+| `SSO_ENABLED` | `false` | Windows-Anmeldung (Kerberos/NTLM): Zugriff nur, wenn der Windows-Anmeldename (sAMAccountName) als Benutzername in der Personenliste steht. Server muss Domänenmitglied sein, siehe `deploy/SERVER-ANLEITUNG.md`. Lokal genügt `app.sso.enabled=true` bzw. `SSO_ENABLED=true` und eine Person mit dem eigenen Windows-Anmeldenamen (`whoami`, Teil hinter dem `\`) |
 | `SSO_DOMAINS` | – | nur Konten dieser Domänen zulassen (Kurzname, kommagetrennt) |
 | `PASSWORT_LOGIN` | `true` | Anmeldung mit Benutzername/Passwort zusätzlich erlauben |
 | `MAX_HEADER_SIZE` | `64KB` | maximale Header-Größe – Kerberos-Tickets mit vielen AD-Gruppen sind groß |
@@ -317,7 +317,7 @@ src/main/java/de/fisp/azubiprojekt
 ## Auf einem Server betreiben (Windows-Dienst)
 
 Backend und Frontend laufen zusammen als **ein Windows-Dienst**: Das Backend liefert das gebaute
-Frontend aus dem Ordner `frontend/` mit aus, die Seite ist unter `https://<Server>:8443/` erreichbar.
+Frontend aus dem Ordner `frontend/` mit aus, die Seite ist unter `https://<Server>:5016/` erreichbar.
 
 ```bat
 deploy\build-release.cmd        :: auf dem Entwicklungsrechner -> release\berichtsheft-<Version>.zip
@@ -333,7 +333,7 @@ Alle Schritte, Optionen und Zertifikate: **[deploy/SERVER-ANLEITUNG.md](deploy/S
 
 ```bash
 docker build -t berichtsheft-backend .
-docker run -p 8443:8443 -e JWT_SECRET=bitte-aendern -v berichtsheft-data:/app/data berichtsheft-backend
+docker run -p 5016:5016 -e JWT_SECRET=bitte-aendern -v berichtsheft-data:/app/data berichtsheft-backend
 ```
 
 ## Fehlerbehebung
@@ -341,7 +341,7 @@ docker run -p 8443:8443 -e JWT_SECRET=bitte-aendern -v berichtsheft-data:/app/da
 | Problem | Lösung |
 |---|---|
 | `release version 21 not supported` | Es läuft ein älteres JDK. JDK 21+ installieren und in IntelliJ als Projekt-SDK einstellen. |
-| `Port 8443 already in use` | Anderes Programm beenden oder mit `PORT=8444` starten. Dann im Frontend `proxy.conf.json` anpassen. |
+| `Port 5016 already in use` | Anderes Programm beenden oder mit `PORT=5017` starten. Dann im Frontend `proxy.conf.mjs` anpassen. |
 | `keytool fehlgeschlagen` beim Start | Es läuft nur ein JRE ohne `keytool`. Ein vollständiges JDK 21 verwenden oder ein eigenes Zertifikat per `SSL_KEYSTORE` angeben. |
 | Browser meldet „Verbindung nicht sicher“ | Erwartet beim selbstsignierten Zertifikat: einmal bestätigen oder mkcert verwenden (siehe oben). |
 | Login klappt nicht mehr nach Code-Änderungen | Ordner `data` löschen, damit die Demo-Daten neu angelegt werden. |

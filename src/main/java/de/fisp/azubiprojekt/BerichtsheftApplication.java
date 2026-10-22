@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class BerichtsheftApplication {
 
     public static void main(String[] args) {
-        // Lokal: TLS-Zertifikat fuer https://localhost:8443 erzeugen, falls noch keins vorhanden ist
+        // Lokal: TLS-Zertifikat fuer https://localhost:5016 erzeugen, falls noch keins vorhanden ist
         DevCertificate.ensureDevKeystore();
         SpringApplication.run(BerichtsheftApplication.class, args);
     }

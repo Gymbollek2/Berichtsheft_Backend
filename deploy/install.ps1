@@ -16,7 +16,7 @@
     Installationsordner. Datenbank (data\) und Logs (logs\) liegen ebenfalls dort.
 
 .PARAMETER Port
-    HTTPS-Port (Standard 8443; 443 ist möglich, wenn der Port frei ist).
+    HTTPS-Port (Standard 5016; 443 ist möglich, wenn der Port frei ist).
 
 .PARAMETER Hostnamen
     Zusätzliche Namen, unter denen der Server aufgerufen wird (z. B. berichtsheft.firma.local).
@@ -50,7 +50,7 @@
 [CmdletBinding()]
 param(
     [string]$Zielordner = 'F:\Program Files\Berichtsheft',
-    [ValidateRange(1, 65535)][int]$Port = 8443,
+    [ValidateRange(1, 65535)][int]$Port = 5016,
     [string[]]$Hostnamen = @(),
     [string]$AusbilderBenutzer = 'ausbilder',
     [string]$AusbilderVorname = 'Ausbildung',
