@@ -6,7 +6,7 @@ package de.fisp.azubiprojekt.util;
  *     <li>{@link #ROLE_TRAINEE} – Auszubildende/r: fuehrt das eigene Berichtsheft, sieht eigene Lernziele.</li>
  *     <li>{@link #ROLE_STUDENT} – Duale/r Student/in: Rechte wie Auszubildende.</li>
  *     <li>{@link #ROLE_TRAINER} – Ausbilder/in: darf alles – verwaltet Personen (auch andere Ausbilder) und
- *     Lernziele, zeichnet Berichtshefte ab.</li>
+ *     Lernziele, nimmt Berichtshefte ab.</li>
  * </ul>
  */
 public enum RoleEnum {

@@ -4,7 +4,7 @@ package de.fisp.azubiprojekt.util;
 public enum BenachrichtigungTypEnum {
     /** An Ausbilder: Ein Azubi hat ein Berichtsheft abgegeben. */
     BERICHT_ABGEGEBEN,
-    /** An den Azubi: Das Berichtsheft wurde abgezeichnet. */
+    /** An den Azubi: Das Berichtsheft wurde abgenommen. */
     BERICHT_ABGEZEICHNET,
     /** An den Azubi: Das Berichtsheft wurde zur Ueberarbeitung zurueckgegeben. */
     BERICHT_ZURUECKGEGEBEN,

@@ -133,7 +133,7 @@ public class LernzielService {
 
     /**
      * Loescht ein Lernziel. Nicht erlaubt, solange untergeordnete Lernziele existieren oder das Lernziel
-     * in eingereichten bzw. abgezeichneten Wochen verwendet wird (die Nachweise sollen unveraendert bleiben).
+     * in eingereichten bzw. abgenommenen Wochen verwendet wird (die Nachweise sollen unveraendert bleiben).
      * Aus Entwuerfen wird die Zuordnung entfernt.
      */
     @Transactional
@@ -148,7 +148,7 @@ public class LernzielService {
         List<Berichtsheft> eintraege = berichtsheftDAO.findByQualificationsContains(lernziel);
         long gesperrt = eintraege.stream().filter(this::isLocked).count();
         if (gesperrt > 0) {
-            throw new InvalidRequestException("Das Lernziel wird in " + gesperrt + " eingereichten oder abgezeichneten "
+            throw new InvalidRequestException("Das Lernziel wird in " + gesperrt + " eingereichten oder abgenommenen "
                     + "Berichtsheft-Einträgen verwendet und kann deshalb nicht gelöscht werden.");
         }
         for (Berichtsheft b : eintraege) {

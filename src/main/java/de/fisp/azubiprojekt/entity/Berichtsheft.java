@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * Ein Tageseintrag im Berichtsheft. Mehrere Tageseintraege einer Kalenderwoche werden
- * gemeinsam ueber einen {@link Wochenbericht} eingereicht und abgezeichnet.
+ * gemeinsam ueber einen {@link Wochenbericht} eingereicht und abgenommen.
  */
 @Entity
 @Table(name = "berichtsheft",

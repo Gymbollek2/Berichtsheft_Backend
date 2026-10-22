@@ -13,6 +13,8 @@
   `/woche`, nicht abgegebene Wochen fehlen in `/historie`). Zurückgegebene Wochen bleiben sichtbar.
 - Erneut eingereichte Wochen liefern kein `geprueftVon`/`geprueftAm` der letzten Rückgabe mehr – die neue
   Prüfung steht aus. Der Kommentar der Rückgabe bleibt erhalten.
+- „Abgezeichnet“ heißt jetzt **„Abgenommen“** (Statuslabel, Benachrichtigung, Meldungen). Intern bleiben der
+  Status `ABGEZEICHNET` und der Endpunkt `/woche/{id}/abzeichnen`, damit vorhandene Daten weiter gelten.
 - Standard-Port **5016** statt 8443 (`PORT`), auch für `install.cmd`. Bestehende Installationen behalten
   bei `update.cmd` ihren Port.
 

@@ -350,10 +350,11 @@ class BerichtsheftApiTest {
         mvc.perform(post("/v1/berichtsheft/woche/" + wochenId + "/abzeichnen").header("Authorization", trainer)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"kommentar\":\"Passt\"}"))
                 .andExpect(jsonPath("$.status").value("ABGEZEICHNET"))
+                .andExpect(jsonPath("$.statusLabel").value("Abgenommen"))
                 .andExpect(jsonPath("$.geprueftVon").value("Petra Pruefer"))
                 .andExpect(jsonPath("$.gesamtStunden").value(38.0));
 
-        // Azubis duerfen nicht abzeichnen; in abgezeichneten Wochen genutzte Lernziele sind geschuetzt
+        // Azubis duerfen nicht abnehmen; in abgenommenen Wochen genutzte Lernziele sind geschuetzt
         mvc.perform(post("/v1/berichtsheft/woche/" + wochenId + "/abzeichnen").header("Authorization", azubi))
                 .andExpect(status().isForbidden());
         mvc.perform(delete("/v1/lernziel/" + feinId).header("Authorization", trainer)).andExpect(status().isBadRequest());

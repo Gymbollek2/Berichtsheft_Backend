@@ -34,7 +34,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Digitales Berichtsheft: Tageseintraege erfassen, Wochen einreichen und durch Ausbilder abzeichnen lassen.
+ * Digitales Berichtsheft: Tageseintraege erfassen, Wochen abgeben und durch Ausbilder abnehmen lassen.
  */
 @Service
 public class BerichtsheftService {
@@ -253,7 +253,7 @@ public class BerichtsheftService {
 
         benachrichtigungService.senden(bericht.getPerson(), BenachrichtigungTypEnum.BERICHT_ABGEZEICHNET,
                 "Berichtsheft abgenommen",
-                pruefer + " hat dein Berichtsheft für " + woche(bericht.getWeekStart()) + " abgezeichnet."
+                pruefer + " hat dein Berichtsheft für " + woche(bericht.getWeekStart()) + " abgenommen."
                         + (bericht.getKommentar() == null ? "" : " Kommentar: „" + bericht.getKommentar() + "“"),
                 eigeneWoche(bericht), bezug(bericht));
         benachrichtigungService.erledigt(bezug(bericht), BenachrichtigungTypEnum.BERICHT_ABGEGEBEN);

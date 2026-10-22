@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * Freigabe-Klammer fuer eine Kalenderwoche eines Azubis (Einreichen, Abzeichnen, Zurueckgeben).
+ * Freigabe-Klammer fuer eine Kalenderwoche eines Azubis (Abgeben, Abnehmen, Zurueckgeben).
  * {@link #weekStart} ist immer der Montag der Woche.
  */
 @Entity

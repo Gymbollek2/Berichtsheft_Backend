@@ -103,7 +103,7 @@ public class DemoDataInitializer implements ApplicationRunner {
             personLernzielService.recomputeAncestors(max, grob.getId());
         }
 
-        // Max: letzte Woche eingereicht (wartet auf Pruefung), vorletzte Woche abgezeichnet, aktuelle Woche Entwurf
+        // Max: letzte Woche eingereicht (wartet auf Pruefung), vorletzte Woche abgenommen, aktuelle Woche Entwurf
         LocalDate dieseWoche = LocalDate.now().with(DayOfWeek.MONDAY);
         LocalDate letzteWoche = dieseWoche.minusWeeks(1);
         LocalDate vorletzteWoche = dieseWoche.minusWeeks(2);
@@ -114,13 +114,13 @@ public class DemoDataInitializer implements ApplicationRunner {
                 "Berufsschule: Netzwerktechnik und Wirtschaft",
                 "Erste Unit-Tests mit JUnit 5 für den PersonService geschrieben",
                 "Code-Review mit dem Team, Feedback eingearbeitet"), List.of(oop, junit));
-        Wochenbericht abgezeichnet = new Wochenbericht(max, vorletzteWoche);
-        abgezeichnet.setStatus(BerichtStatusEnum.ABGEZEICHNET);
-        abgezeichnet.setEingereichtAm(LocalDateTime.now().minusDays(9));
-        abgezeichnet.setGeprueftAm(LocalDateTime.now().minusDays(8));
-        abgezeichnet.setGeprueftVon(ausbilder.getFullName());
-        abgezeichnet.setKommentar("Sehr ausführlich, weiter so!");
-        wochenberichtDAO.save(abgezeichnet);
+        Wochenbericht abgenommen = new Wochenbericht(max, vorletzteWoche);
+        abgenommen.setStatus(BerichtStatusEnum.ABGEZEICHNET);
+        abgenommen.setEingereichtAm(LocalDateTime.now().minusDays(9));
+        abgenommen.setGeprueftAm(LocalDateTime.now().minusDays(8));
+        abgenommen.setGeprueftVon(ausbilder.getFullName());
+        abgenommen.setKommentar("Sehr ausführlich, weiter so!");
+        wochenberichtDAO.save(abgenommen);
 
         woche(max, letzteWoche, List.of(
                 "REST-Endpunkte für Lernziele mit Spring Boot umgesetzt",

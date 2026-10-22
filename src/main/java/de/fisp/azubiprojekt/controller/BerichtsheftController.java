@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Berichtsheft: Tageseintraege, Wochen einreichen und abzeichnen. */
+/** Berichtsheft: Tageseintraege, Wochen abgeben und abnehmen (Endpunkt heisst weiter /abzeichnen). */
 @RestController
 @RequestMapping("/v1/berichtsheft")
 public class BerichtsheftController {

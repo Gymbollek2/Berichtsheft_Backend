@@ -6,8 +6,8 @@ public enum BerichtStatusEnum {
     ENTWURF("Entwurf"),
     /** Azubi hat die Woche zur Pruefung eingereicht – keine Bearbeitung mehr moeglich. */
     EINGEREICHT("Eingereicht"),
-    /** Ausbilder hat die Woche abgezeichnet. */
-    ABGEZEICHNET("Abgezeichnet"),
+    /** Ausbilder hat die Woche abgenommen (Name bleibt wegen gespeicherter Daten ABGEZEICHNET). */
+    ABGEZEICHNET("Abgenommen"),
     /** Ausbilder hat die Woche mit Kommentar zurueckgegeben – Azubi kann nachbessern. */
     ABGELEHNT("Zur Überarbeitung");
 

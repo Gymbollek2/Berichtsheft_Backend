@@ -36,10 +36,10 @@ Das passende Frontend liegt in [`Berichtsheft_Frontend`](https://github.com/Gymb
 - **Berichtsheft**:
   - Tageseinträge mit Art (Betrieb, Berufsschule, Urlaub, Krank …), Stunden, Tätigkeiten und Lernzielen
   - Wochenansicht mit Kalenderwoche und Stundensumme
-  - Workflow: **Entwurf → Eingereicht → Abgezeichnet** bzw. **Zur Überarbeitung** (mit Pflichtkommentar)
-  - Eingereichte und abgezeichnete Wochen sind gesperrt.
+  - Workflow: **Entwurf → Eingereicht → Abgenommen** bzw. **Zur Überarbeitung** (mit Pflichtkommentar)
+  - Eingereichte und abgenommene Wochen sind gesperrt.
   - Ausbilder sehen eine Woche erst, wenn der Azubi sie abgegeben hat.
-- **Benachrichtigungen** (Glocke im Frontend): Abgabe an alle Ausbilder, Abzeichnen und Korrekturbedarf an den Azubi,
+- **Benachrichtigungen** (Glocke im Frontend): Abgabe an alle Ausbilder, Abnahme und Korrekturbedarf an den Azubi,
   erreichte Lernziele, Willkommen für neue Zugänge sowie eine tägliche Erinnerung (7 Uhr) an nicht abgegebene
   Berichtshefte der Vorwoche. Ist eine Woche geprüft, gilt die Abgabe-Nachricht bei allen Ausbildern als gelesen.
 - **Demo-Daten** beim ersten Start, damit man sofort loslegen kann.
@@ -58,7 +58,7 @@ Das passende Frontend liegt in [`Berichtsheft_Frontend`](https://github.com/Gymb
 - `GET /v1/lernziel/parent-options?kind=…` liefert nur die passenden übergeordneten Lernziele.
 - Titel sind je Ebene eindeutig.
 - Die Art lässt sich nur ändern, solange keine Unterziele existieren.
-- Löschen ist nur ohne Unterziele möglich. Ebenfalls gesperrt ist es, wenn das Lernziel in eingereichten oder abgezeichneten Wochen verwendet wird.
+- Löschen ist nur ohne Unterziele möglich. Ebenfalls gesperrt ist es, wenn das Lernziel in eingereichten oder abgenommenen Wochen verwendet wird.
 - Status übergeordneter Lernziele: alle Unterziele erreicht → *Erreicht*, mindestens eines begonnen → *In Bearbeitung*, sonst *Offen*. Der Fortschritt in Prozent zählt nur Lernziele ohne Unterziele.
 
 **Berichtsheft**
@@ -68,7 +68,7 @@ Das passende Frontend liegt in [`Berichtsheft_Frontend`](https://github.com/Gymb
 - Betrieb und Berufsschule brauchen Stunden und eine Beschreibung.
 - Tätigkeiten werden nur zugeordneten **Feinlernzielen** zugewiesen. An Urlaubs-, Krankheits- und Feiertagen gibt es keine Lernziele.
 - Einreichen ist ab dem Freitag der Woche möglich und nur, wenn Montag bis Freitag jeweils einen Eintrag haben.
-- Eingereichte und abgezeichnete Wochen sind gesperrt. Zurückgegebene Wochen sind wieder bearbeitbar.
+- Eingereichte und abgenommene Wochen sind gesperrt. Zurückgegebene Wochen sind wieder bearbeitbar.
 
 **Personen**
 
@@ -85,7 +85,7 @@ Das passende Frontend liegt in [`Berichtsheft_Frontend`](https://github.com/Gymb
 | Eigenes Berichtsheft schreiben und einreichen | ✅ | – |
 | Eigene Lernziele und eigenen Fortschritt sehen | ✅ | ✅ |
 | Berichtshefte aller Azubis lesen | – | ✅ |
-| Wochen abzeichnen oder zurückgeben | – | ✅ |
+| Wochen abnehmen oder zurückgeben | – | ✅ |
 | Lernziel-Status setzen | – | ✅ |
 | Lernziele anlegen, ändern, löschen, CSV | – | ✅ |
 | Azubis, Studierende und Ausbilder verwalten | – | ✅ |
@@ -279,7 +279,7 @@ Für `art` gehen `Richtlernziel`, `Groblernziel` und `Feinlernziel`, die Kurzfor
 | DELETE | `/eintrag/{id}` | Tageseintrag löschen |
 | POST | `/woche/einreichen` | `{ "datum": "2026-10-21" }` |
 | GET | `/offen` | eingereichte Wochen (Ausbilder) |
-| POST | `/woche/{id}/abzeichnen` | `{ kommentar? }` (Ausbilder) |
+| POST | `/woche/{id}/abzeichnen` | abnehmen: `{ kommentar? }` (Ausbilder) |
 | POST | `/woche/{id}/ablehnen` | `{ kommentar }`, Kommentar ist Pflicht (Ausbilder) |
 
 Ausbilder sehen die Einträge einer Woche erst, wenn der Azubi sie abgegeben hat: `/woche` liefert dann
@@ -304,7 +304,7 @@ mvnw.cmd test        # Windows
 ```
 
 - **Unit-Tests**: Lernziel-Hierarchie, CSV-Parser, Kalenderwochen, Benutzernamen, Ausbildungsdaten
-- **API-Integrationstest** (`BerichtsheftApiTest`): Er startet die komplette Anwendung mit In-Memory-Datenbank und prüft Login, Rechte, Personenregeln, Lernziel-Hierarchie, berechneten Status, Berichtsheft-Regeln, CSV und den kompletten Workflow (erfassen → einreichen → zurückgeben → nachbessern → abzeichnen).
+- **API-Integrationstest** (`BerichtsheftApiTest`): Er startet die komplette Anwendung mit In-Memory-Datenbank und prüft Login, Rechte, Personenregeln, Lernziel-Hierarchie, berechneten Status, Berichtsheft-Regeln, CSV und den kompletten Workflow (erfassen → einreichen → zurückgeben → nachbessern → abnehmen).
 
 Die Tests laufen zusätzlich bei jedem Push automatisch per **GitHub Actions** (Tab *Actions* im Repository).
 
