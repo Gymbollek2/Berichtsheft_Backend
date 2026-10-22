@@ -5,15 +5,14 @@ package de.fisp.azubiprojekt.util;
  * <ul>
  *     <li>{@link #ROLE_TRAINEE} – Auszubildende/r: fuehrt das eigene Berichtsheft, sieht eigene Lernziele.</li>
  *     <li>{@link #ROLE_STUDENT} – Duale/r Student/in: Rechte wie Auszubildende.</li>
- *     <li>{@link #ROLE_TRAINER} – Ausbilder/in: verwaltet Azubis und Lernziele, zeichnet Berichtshefte ab.</li>
- *     <li>{@link #ROLE_ADMIN} – Administrator/in: alles, inkl. Verwaltung von Ausbildern und Admins.</li>
+ *     <li>{@link #ROLE_TRAINER} – Ausbilder/in: darf alles – verwaltet Personen (auch andere Ausbilder) und
+ *     Lernziele, zeichnet Berichtshefte ab.</li>
  * </ul>
  */
 public enum RoleEnum {
     ROLE_TRAINEE("Auszubildende/r"),
     ROLE_STUDENT("Duale/r Student/in"),
-    ROLE_TRAINER("Ausbilder/in"),
-    ROLE_ADMIN("Administrator/in");
+    ROLE_TRAINER("Ausbilder/in");
 
     private final String label;
 
@@ -30,8 +29,8 @@ public enum RoleEnum {
         return this == ROLE_TRAINEE || this == ROLE_STUDENT;
     }
 
-    /** Rollen mit Verwaltungsrechten (Ausbilder und Admin). */
+    /** Rollen mit Verwaltungsrechten (Ausbilder). */
     public boolean isStaff() {
-        return this == ROLE_TRAINER || this == ROLE_ADMIN;
+        return this == ROLE_TRAINER;
     }
 }

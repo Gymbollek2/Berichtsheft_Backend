@@ -43,10 +43,6 @@ public class CurrentUserService {
         return getRole().isStaff();
     }
 
-    public boolean isAdmin() {
-        return getRole() == RoleEnum.ROLE_ADMIN;
-    }
-
     public Person getPerson() {
         return personDAO.findById(getPersonId())
                 .orElseThrow(() -> new ResourceNotFoundException("Angemeldete Person existiert nicht mehr"));
@@ -54,7 +50,7 @@ public class CurrentUserService {
 
     /**
      * Ermittelt die Person, auf die zugegriffen werden soll.
-     * Azubis duerfen nur ihre eigenen Daten sehen; Ausbilder und Admins jede Person.
+     * Azubis duerfen nur ihre eigenen Daten sehen; Ausbilder jede Person.
      *
      * @param personId gewuenschte Person oder {@code null} fuer "ich selbst"
      */
@@ -71,15 +67,11 @@ public class CurrentUserService {
 
     /**
      * Prueft, ob der angemeldete Benutzer eine Person mit der angegebenen Rolle verwalten darf.
-     * Admins duerfen alles, Ausbilder nur Azubis und duale Studierende.
+     * Ausbilder duerfen alle Personen verwalten (Azubis, Studierende und andere Ausbilder).
      */
     public void requireCanManage(RoleEnum targetRole) {
-        if (isAdmin()) {
-            return;
+        if (!isStaff()) {
+            throw new ActionNotAllowedException("Nur Ausbilder dürfen Personen verwalten");
         }
-        if (getRole() == RoleEnum.ROLE_TRAINER && targetRole.isLearner()) {
-            return;
-        }
-        throw new ActionNotAllowedException("Nur Administratoren dürfen Ausbilder und Administratoren verwalten");
     }
 }

@@ -58,19 +58,19 @@ public class BerichtsheftController {
 
     /** Warteschlange der eingereichten Wochen. */
     @GetMapping("/offen")
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public List<WochenberichtSummaryDTO> offen() {
         return berichtsheftService.getOffen();
     }
 
     @PostMapping("/woche/{id}/abzeichnen")
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public WochenberichtResponseDTO abzeichnen(@PathVariable Long id, @Valid @RequestBody(required = false) WochenPruefungRequestDTO request) {
         return berichtsheftService.abzeichnen(id, request == null ? null : request.kommentar());
     }
 
     @PostMapping("/woche/{id}/ablehnen")
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public WochenberichtResponseDTO ablehnen(@PathVariable Long id, @Valid @RequestBody WochenPruefungRequestDTO request) {
         return berichtsheftService.ablehnen(id, request.kommentar());
     }

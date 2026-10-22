@@ -4,6 +4,7 @@ import de.fisp.azubiprojekt.util.EintragArtEnum;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,6 +45,9 @@ public class Berichtsheft {
             inverseJoinColumns = @JoinColumn(name = "lernziel_id")
     )
     private List<Lernziel> qualifications = new ArrayList<>();
+
+    /** Zeitpunkt der letzten Speicherung (fuer die Anzeige "zuletzt gespeichert"). */
+    private LocalDateTime updatedAt;
 
     public Berichtsheft() {
     }
@@ -105,5 +109,13 @@ public class Berichtsheft {
 
     public void setQualifications(List<Lernziel> qualifications) {
         this.qualifications = new ArrayList<>(qualifications);
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

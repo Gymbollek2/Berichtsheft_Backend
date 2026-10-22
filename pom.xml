@@ -12,7 +12,7 @@
 
     <groupId>de.fisp</groupId>
     <artifactId>berichtsheft-backend</artifactId>
-    <version>1.1.1</version>
+    <version>1.6.1</version>
     <packaging>jar</packaging>
 
     <name>Berichtsheft-Backend</name>
@@ -23,6 +23,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <jjwt.version>0.13.0</jjwt.version>
+        <waffle.version>3.7.0</waffle.version>
     </properties>
 
     <dependencies>
@@ -57,6 +58,13 @@
             <artifactId>jjwt-jackson</artifactId>
             <version>${jjwt.version}</version>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- Windows-Anmeldung (SSO per Kerberos/NTLM ueber die Windows-Schnittstelle SSPI) -->
+        <dependency>
+            <groupId>com.github.waffle</groupId>
+            <artifactId>waffle-jna</artifactId>
+            <version>${waffle.version}</version>
         </dependency>
 
         <!-- Datenbank -->

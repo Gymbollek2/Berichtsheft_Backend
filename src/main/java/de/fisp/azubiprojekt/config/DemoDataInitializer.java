@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,7 @@ import java.util.List;
  * Abschalten mit {@code app.demo-data.enabled=false} bzw. Umgebungsvariable {@code DEMO_DATA=false}.
  */
 @Component
+@Order(2)
 @ConditionalOnProperty(name = "app.demo-data.enabled", havingValue = "true", matchIfMissing = true)
 public class DemoDataInitializer implements ApplicationRunner {
 
@@ -65,7 +67,6 @@ public class DemoDataInitializer implements ApplicationRunner {
         }
         log.info("Leere Datenbank erkannt – lege Demo-Daten an");
 
-        createPerson("Anna", "Admin", RoleEnum.ROLE_ADMIN, "admin", "admin123", null, 0, null);
         Person ausbilder = createPerson("Petra", "Pruefer", RoleEnum.ROLE_TRAINER, "ausbilder", "ausbilder123", null, 0, null);
         Person max = createPerson("Max", "Mustermann", RoleEnum.ROLE_TRAINEE, "azubi", "azubi123", BERUF, 2,
                 LocalDate.now().minusYears(1).minusMonths(2).withDayOfMonth(1));
@@ -135,7 +136,7 @@ public class DemoDataInitializer implements ApplicationRunner {
         berichtsheftDAO.save(eintrag(max, dieseWoche, EintragArtEnum.BETRIEB, 8,
                 "Angular-Komponente für die Wochenansicht begonnen", List.of(angular)));
 
-        log.info("Demo-Logins: admin/admin123 (Admin), ausbilder/ausbilder123 (Ausbilder), azubi/azubi123 und azubi2/azubi123 (Azubis)");
+        log.info("Demo-Logins: ausbilder/ausbilder123 (Ausbilder), azubi/azubi123 und azubi2/azubi123 (Azubis)");
     }
 
     private Person createPerson(String first, String last, RoleEnum role, String username, String password,

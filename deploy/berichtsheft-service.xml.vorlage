@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Konfiguration des Windows-Dienstes (WinSW). Wird von install.ps1 als berichtsheft-service.xml erzeugt.
+  Nach Änderungen den Dienst neu starten:  berichtsheft-service.exe restart
+  Achtung: enthält das JWT-Geheimnis – nur für Administratoren lesbar (setzt install.ps1).
+-->
+<service>
+  <id>Berichtsheft</id>
+  <name>Berichtsheft (Azubi-Portal)</name>
+  <description>Digitales Berichtsheft – Backend und Frontend unter https://{{HOST}}:{{PORT}}/</description>
+
+  <executable>{{JAVA}}</executable>
+  <arguments>-Xms256m -Xmx{{SPEICHER}} -Dfile.encoding=UTF-8 -jar "%BASE%\berichtsheft.jar" --spring.profiles.active=prod</arguments>
+  <workingdirectory>%BASE%</workingdirectory>
+
+  <startmode>Automatic</startmode>
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>30 sec</stoptimeout>
+
+  <logpath>%BASE%\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+
+  <env name="PORT" value="{{PORT}}"/>
+  <env name="JWT_SECRET" value="{{JWT_SECRET}}"/>
+  <env name="SSL_ENABLED" value="{{SSL_ENABLED}}"/>
+  <env name="SSL_HOSTNAMES" value="{{SSL_HOSTNAMES}}"/>
+{{SSL_KEYSTORE_ZEILEN}}
+{{ANMELDUNG_ZEILEN}}
+  <env name="DEMO_DATA" value="{{DEMO_DATA}}"/>
+  <!-- Datenbank (data\), Zertifikat (data\ssl\), Frontend (frontend\) und Logs (logs\) liegen relativ zu %BASE% -->
+</service>

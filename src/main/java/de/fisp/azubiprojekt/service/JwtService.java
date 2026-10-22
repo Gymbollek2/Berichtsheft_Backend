@@ -31,8 +31,16 @@ public class JwtService {
     private final SecretKey key;
     private final Duration validity;
 
+    /** Standardwert aus application.properties – nur fuer die lokale Entwicklung. */
+    static final String DEV_SECRET = "lokaler-entwicklungs-schluessel-bitte-in-produktion-ersetzen";
+
     public JwtService(@Value("${app.jwt.secret}") String secret,
-                      @Value("${app.jwt.expiration-hours:12}") long expirationHours) {
+                      @Value("${app.jwt.expiration-hours:12}") long expirationHours,
+                      @Value("${app.jwt.require-secret:false}") boolean requireSecret) {
+        if (requireSecret && (secret == null || secret.equals(DEV_SECRET) || secret.length() < 32)) {
+            throw new IllegalStateException("Für den Serverbetrieb muss JWT_SECRET gesetzt sein "
+                    + "(mindestens 32 zufällige Zeichen). Das Installationsskript erzeugt ihn automatisch.");
+        }
         this.key = Keys.hmacShaKeyFor(sha256(secret));
         this.validity = Duration.ofHours(expirationHours);
     }

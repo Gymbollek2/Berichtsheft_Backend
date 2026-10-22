@@ -1,5 +1,8 @@
 /target/
 /data/
+/logs/
+/frontend/
+/release/
 *.log
 
 ### STS ###

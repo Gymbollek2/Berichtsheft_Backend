@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Fachliche Daten einer Person (Azubi, Ausbilder, Admin). Login-Daten liegen in {@link Users}. */
+/** Fachliche Daten einer Person (Azubi, Student, Ausbilder). Login-Daten liegen in {@link Users}. */
 @Entity
 @Table(name = "person")
 public class Person {

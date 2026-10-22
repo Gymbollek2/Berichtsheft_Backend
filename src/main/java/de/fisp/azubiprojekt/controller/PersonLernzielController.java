@@ -47,13 +47,13 @@ public class PersonLernzielController {
 
     /** Fortschritt aller Azubis. */
     @GetMapping("/fortschritt")
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public List<FortschrittResponseDTO> progressAll() {
         return personLernzielService.getFortschrittAlle();
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public PersonLernzielResponseDTO setStatus(@PathVariable Long id, @Valid @RequestBody PersonLernzielStatusRequestDTO request) {
         return personLernzielService.setStatus(id, request.status());
     }

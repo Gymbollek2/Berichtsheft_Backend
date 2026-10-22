@@ -25,13 +25,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Testet die wichtigsten Ablaeufe ueber die echte REST-API inkl. Security und In-Memory-Datenbank.
- * Grundlage sind die Demo-Daten (admin, ausbilder, azubi, azubi2).
+ * Grundlage sind die Demo-Daten (ausbilder, azubi, azubi2).
  */
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:berichtsheft-test;DB_CLOSE_DELAY=-1",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "server.ssl.enabled=false",
-        "app.demo-data.enabled=true"
+        "app.demo-data.enabled=true",
+        // Die Tests rechnen mit dem kleinen Demo-Lernzielplan; der Rahmenplan wird in RahmenplanImportTest geprueft
+        "app.rahmenplan-import.enabled=false"
 })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class BerichtsheftApiTest {
@@ -134,7 +136,7 @@ class BerichtsheftApiTest {
     // ------------------------------------------------------------------ Personen
 
     @Test
-    void trainerCanCreateTraineeButNotAdmin() throws Exception {
+    void trainerCanManageAllRoles() throws Exception {
         String trainer = login("ausbilder", "ausbilder123");
         LocalDate start = LocalDate.now().minusMonths(1);
         mvc.perform(post("/v1/person").header("Authorization", trainer)
@@ -154,29 +156,44 @@ class BerichtsheftApiTest {
         mvc.perform(post("/v1/person").header("Authorization", trainer)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"firstName\":\"Bad\",\"lastName\":\"Admin\",\"role\":\"ROLE_ADMIN\",\"password\":\"geheim123\"}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isBadRequest());
+
+        // Ausbilder duerfen alles, auch weitere Ausbilder anlegen, bearbeiten und loeschen
+        String neueAusbilderin = json(mvc.perform(post("/v1/person").header("Authorization", trainer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"firstName\":\"Nora\",\"lastName\":\"Neu\",\"role\":\"ROLE_TRAINER\",\"password\":\"geheim123\"}"))
+                .andExpect(status().isCreated()));
+        Integer noraId = JsonPath.read(neueAusbilderin, "$.id");
+        mvc.perform(put("/v1/person/" + noraId).header("Authorization", trainer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"firstName\":\"Nora\",\"lastName\":\"Neumann\",\"role\":\"ROLE_TRAINER\",\"username\":\"nora.neu\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lastName").value("Neumann"));
+        String nora = login("nora.neu", "geheim123");
+        mvc.perform(get("/v1/berichtsheft/offen").header("Authorization", nora)).andExpect(status().isOk());
+        mvc.perform(delete("/v1/person/" + noraId).header("Authorization", trainer)).andExpect(status().is2xxSuccessful());
     }
 
     @Test
     void personRulesAreEnforced() throws Exception {
-        String admin = login("admin", "admin123");
+        String ausbilder = login("ausbilder", "ausbilder123");
         // Azubi ohne Ausbildungsbeginn
-        mvc.perform(post("/v1/person").header("Authorization", admin)
+        mvc.perform(post("/v1/person").header("Authorization", ausbilder)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"firstName\":\"Ohne\",\"lastName\":\"Start\",\"role\":\"ROLE_TRAINEE\",\"password\":\"geheim123\"}"))
                 .andExpect(status().isBadRequest());
         // Passwort ohne Ziffer
-        mvc.perform(post("/v1/person").header("Authorization", admin)
+        mvc.perform(post("/v1/person").header("Authorization", ausbilder)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"firstName\":\"Neue\",\"lastName\":\"Ausbilderin\",\"role\":\"ROLE_TRAINER\",\"password\":\"nurbuchstaben\"}"))
                 .andExpect(status().isBadRequest());
-        // Admin kann sich nicht selbst loeschen
-        Integer adminId = JsonPath.read(json(mvc.perform(get("/v1/passport/me").header("Authorization", admin))), "$.id");
-        mvc.perform(delete("/v1/person/" + adminId).header("Authorization", admin)).andExpect(status().isForbidden());
+        // Ausbilder kann sich nicht selbst loeschen
+        Integer ausbilderId = JsonPath.read(json(mvc.perform(get("/v1/passport/me").header("Authorization", ausbilder))), "$.id");
+        mvc.perform(delete("/v1/person/" + ausbilderId).header("Authorization", ausbilder)).andExpect(status().isForbidden());
         // Azubi mit Berichtsheft-Eintraegen kann nicht zum Ausbilder werden
-        List<Integer> ids = JsonPath.read(json(mvc.perform(get("/v1/person/azubis").header("Authorization", admin))),
+        List<Integer> ids = JsonPath.read(json(mvc.perform(get("/v1/person/azubis").header("Authorization", ausbilder))),
                 "$[?(@.username == 'azubi')].id");
-        mvc.perform(put("/v1/person/" + ids.get(0)).header("Authorization", admin)
+        mvc.perform(put("/v1/person/" + ids.get(0)).header("Authorization", ausbilder)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"firstName\":\"Max\",\"lastName\":\"Mustermann\",\"role\":\"ROLE_TRAINER\",\"username\":\"azubi\"}"))
                 .andExpect(status().isBadRequest());
@@ -317,6 +334,9 @@ class BerichtsheftApiTest {
                 .andExpect(jsonPath("$.status").value("ABGELEHNT"));
 
         // 4. Azubi bessert nach, reicht erneut ein, Ausbilder zeichnet ab
+        // Berufsschultage haben keine Lernziele
+        saveEintrag(azubi, montag.plusDays(1), 6, "SCHULE", "Berufsschule: Datenbanken", String.valueOf(feinId))
+                .andExpect(status().isBadRequest());
         saveEintrag(azubi, montag.plusDays(1), 6, "SCHULE", "Berufsschule: Datenbanken", "").andExpect(status().isOk());
         mvc.perform(post("/v1/berichtsheft/woche/einreichen").header("Authorization", azubi)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"datum\":\"" + montag + "\"}"))

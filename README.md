@@ -19,8 +19,9 @@ Das passende Frontend liegt in [`Berichtsheft_Frontend`](https://github.com/Gymb
 7. [Tests](#tests)
 8. [Versionen und Releases](#versionen-und-releases)
 9. [Projektstruktur](#projektstruktur)
-10. [Docker](#docker)
-11. [Fehlerbehebung](#fehlerbehebung)
+10. [Auf einem Server betreiben (Windows-Dienst)](#auf-einem-server-betreiben-windows-dienst)
+11. [Docker](#docker)
+12. [Fehlerbehebung](#fehlerbehebung)
 
 ---
 
@@ -28,7 +29,7 @@ Das passende Frontend liegt in [`Berichtsheft_Frontend`](https://github.com/Gymb
 
 - **Nur HTTPS** auf Port 8443. Für die lokale Entwicklung erzeugt das Backend beim ersten Start automatisch ein Zertifikat.
 - **Login mit JWT**: Benutzername und Passwort (BCrypt-gehasht) ergeben ein Token. Nach einer Passwortänderung werden alle alten Tokens ungültig.
-- **Benutzerrollen**: Azubi, dualer Student, Ausbilder und Admin, jeweils mit eigenen Rechten (siehe unten).
+- **Benutzerrollen**: Azubi, dualer Student und Ausbilder, jeweils mit eigenen Rechten (siehe unten). Ausbilder dürfen alles.
 - **Personenverwaltung**: Personen mit Login anlegen, bearbeiten, löschen und Passwörter zurücksetzen. Der Benutzername wird automatisch als `vorname.nachname` erzeugt.
 - **Lernziele**: feste Hierarchie Richtlernziel → Groblernziel → Feinlernziel (siehe [Fachregeln](#fachregeln)). Neue Lernziele werden automatisch allen Azubis zugewiesen. **CSV-Import und -Export** sind möglich.
 - **Lernfortschritt**: Der Ausbilder setzt den Status der Feinlernziele (*Offen*, *In Bearbeitung*, *Erreicht*). Grob- und Richtlernziele werden daraus berechnet. Wird ein Feinlernziel im Berichtsheft angegeben, wechselt es automatisch auf *In Bearbeitung*.
@@ -70,21 +71,23 @@ Das passende Frontend liegt in [`Berichtsheft_Frontend`](https://github.com/Gymb
 - Passwörter: mindestens 8 Zeichen mit Buchstaben und Ziffern.
 - Benutzernamen: Kleinbuchstaben, Ziffern, `.`, `-`, `_`.
 - Azubis brauchen einen Ausbildungsbeginn. Das Ausbildungsjahr wird daraus berechnet.
-- Niemand kann sich selbst löschen oder die eigene Rolle ändern. Der letzte Admin bleibt immer erhalten.
-- Azubis mit Berichtsheft-Einträgen können nicht zu Ausbildern oder Admins gemacht werden.
+- Niemand kann sich selbst löschen oder die eigene Rolle ändern. Der letzte Ausbilder bleibt immer erhalten.
+- Azubis mit Berichtsheft-Einträgen können nicht zu Ausbildern gemacht werden.
 
 ## Rollen und Rechte
 
-| Aktion | Azubi / Student | Ausbilder | Admin |
-|---|:---:|:---:|:---:|
-| Eigenes Berichtsheft schreiben und einreichen | ✅ | – | – |
-| Eigene Lernziele und eigenen Fortschritt sehen | ✅ | ✅ | ✅ |
-| Berichtshefte aller Azubis lesen | – | ✅ | ✅ |
-| Wochen abzeichnen oder zurückgeben | – | ✅ | ✅ |
-| Lernziel-Status setzen | – | ✅ | ✅ |
-| Lernziele anlegen, ändern, löschen, CSV | – | ✅ | ✅ |
-| Azubis und Studierende verwalten | – | ✅ | ✅ |
-| Ausbilder und Admins verwalten | – | – | ✅ |
+| Aktion | Azubi / Student | Ausbilder |
+|---|:---:|:---:|
+| Eigenes Berichtsheft schreiben und einreichen | ✅ | – |
+| Eigene Lernziele und eigenen Fortschritt sehen | ✅ | ✅ |
+| Berichtshefte aller Azubis lesen | – | ✅ |
+| Wochen abzeichnen oder zurückgeben | – | ✅ |
+| Lernziel-Status setzen | – | ✅ |
+| Lernziele anlegen, ändern, löschen, CSV | – | ✅ |
+| Azubis, Studierende und Ausbilder verwalten | – | ✅ |
+
+Die frühere Rolle „Administrator/in“ gibt es nicht mehr. Bestehende Admins werden beim Start automatisch
+zu Ausbildern (`RollenMigration`) und melden sich einmal neu an.
 
 Azubis können über die API **nur ihre eigenen Daten** abrufen. Das wird serverseitig geprüft, nicht nur im Frontend.
 
@@ -151,8 +154,7 @@ Werden beim **ersten Start mit leerer Datenbank** automatisch angelegt:
 
 | Benutzername | Passwort | Rolle | Hinweis |
 |---|---|---|---|
-| `admin` | `admin123` | Admin | darf alles |
-| `ausbilder` | `ausbilder123` | Ausbilder | eine Woche von Max wartet auf Prüfung |
+| `ausbilder` | `ausbilder123` | Ausbilder | darf alles; eine Woche von Max wartet auf Prüfung |
 | `azubi` | `azubi123` | Azubi (Max Mustermann) | mit Beispiel-Wochen |
 | `azubi2` | `azubi123` | Azubi (Erika Musterfrau) | ohne Einträge |
 
@@ -187,7 +189,17 @@ Alle Werte stehen in `src/main/resources/application.properties` und lassen sich
 | `JWT_SECRET` | Entwicklungsschlüssel | **In Produktion unbedingt setzen** (langer Zufallswert) |
 | `JWT_EXPIRATION_HOURS` | `12` | Gültigkeit eines Logins |
 | `CORS_ORIGINS` | `https://localhost:4200` | Erlaubte Frontend-Adressen (kommagetrennt) |
-| `DEMO_DATA` | `true` | Demo-Daten bei leerer DB anlegen |
+| `DEMO_DATA` | `true` (Profil `prod`: `false`) | Demo-Daten bei leerer DB anlegen |
+| `SSL_HOSTNAMES` | – | weitere Namen für das selbstsignierte Zertifikat (kommagetrennt); Rechnername und IPs kommen automatisch dazu |
+| `FRONTEND_DIR` | `file:./frontend/` | Ordner mit dem gebauten Frontend, das unter derselben Adresse ausgeliefert wird |
+| `RAHMENPLAN_IMPORT` | `true` | Ausbildungsrahmenplan FIAE einmalig einspielen |
+| `SSO_ENABLED` | `false` | Windows-Anmeldung (Kerberos/NTLM): Zugriff nur, wenn der Windows-Anmeldename (sAMAccountName) als Benutzername in der Personenliste steht. Server muss Domänenmitglied sein, siehe `deploy/SERVER-ANLEITUNG.md` |
+| `SSO_DOMAINS` | – | nur Konten dieser Domänen zulassen (Kurzname, kommagetrennt) |
+| `PASSWORT_LOGIN` | `true` | Anmeldung mit Benutzername/Passwort zusätzlich erlauben |
+| `MAX_HEADER_SIZE` | `64KB` | maximale Header-Größe – Kerberos-Tickets mit vielen AD-Gruppen sind groß |
+
+Mit `--spring.profiles.active=prod` gelten zusätzlich die Werte aus `application-prod.properties`:
+`JWT_SECRET` ist Pflicht, keine Demo-Daten, H2-Konsole aus, Logdatei unter `logs/`.
 
 > **Hinweis:** Die frühere GitLab-OAuth-Anbindung (Client-ID/-Secret von `gitlab.fisp.dev`) und die LDAP-Reste wurden entfernt. Die Zugangsdaten standen im Klartext im Code und dürfen nicht in ein öffentliches Repository. Falls ihr den GitLab-Login wieder braucht, solltet ihr das alte Client-Secret in GitLab **neu erzeugen** und das neue nur per Umgebungsvariable übergeben.
 
@@ -201,11 +213,13 @@ Alle Endpunkte außer dem Login brauchen den Header `Authorization: Bearer <acce
 
 | Methode | Pfad | Beschreibung |
 |---|---|---|
+| GET | `/optionen` | `{ sso, passwortLogin }` – welche Anmeldearten angeboten werden |
 | POST | `/login` | `{ "username", "password" }` → `{ accessToken, expiresAt, user }` |
+| GET | `/sso` | Windows-Anmeldung (`WWW-Authenticate: Negotiate`) → wie `/login`; 403 mit `konto`, wenn das Windows-Konto nicht in der Personenliste steht |
 | GET | `/me` | eigene Daten |
 | POST | `/change-password` | `{ oldPassword, newPassword }` → neues Token |
 
-### Personen – `/v1/person` (Ausbilder/Admin)
+### Personen – `/v1/person` (Ausbilder)
 
 | Methode | Pfad | Beschreibung |
 |---|---|---|
@@ -224,7 +238,7 @@ Alle Endpunkte außer dem Login brauchen den Header `Authorization: Bearer <acce
 | GET | `/` `?kind=KIND_BROAD` | alle Lernziele |
 | GET | `/{id}` | ein Lernziel (inkl. Anzahl Unterziele) |
 | GET | `/parent-options?kind=KIND_SPECIFIC` | erlaubte übergeordnete Lernziele für eine Art |
-| POST / PUT / DELETE | `/` bzw. `/{id}` | verwalten (Ausbilder/Admin): `{ title, description?, kind, parentId? }` |
+| POST / PUT / DELETE | `/` bzw. `/{id}` | verwalten (Ausbilder): `{ title, description?, kind, parentId? }` |
 | GET | `/export` | CSV-Download |
 | POST | `/import` | CSV-Upload (multipart, Feld `file`) |
 
@@ -247,8 +261,8 @@ Für `art` gehen `Richtlernziel`, `Groblernziel` und `Feinlernziel`, die Kurzfor
 | GET | `/me/fortschritt` | eigener Fortschritt in Prozent |
 | GET | `/person/{id}` | Lernziele einer Person |
 | GET | `/person/{id}/fortschritt` | Fortschritt einer Person |
-| GET | `/fortschritt` | Fortschritt aller Azubis (Ausbilder/Admin) |
-| PUT | `/{id}/status` | `{ "status": "STATUS_DONE" }` (Ausbilder/Admin, nur Lernziele ohne Unterziele) |
+| GET | `/fortschritt` | Fortschritt aller Azubis (Ausbilder) |
+| PUT | `/{id}/status` | `{ "status": "STATUS_DONE" }` (Ausbilder, nur Lernziele ohne Unterziele) |
 
 ### Berichtsheft – `/v1/berichtsheft`
 
@@ -259,9 +273,9 @@ Für `art` gehen `Richtlernziel`, `Groblernziel` und `Feinlernziel`, die Kurzfor
 | PUT | `/eintrag` | Tageseintrag speichern: `{ date, hours, art, description, lernzielIds }` |
 | DELETE | `/eintrag/{id}` | Tageseintrag löschen |
 | POST | `/woche/einreichen` | `{ "datum": "2026-10-21" }` |
-| GET | `/offen` | eingereichte Wochen (Ausbilder/Admin) |
-| POST | `/woche/{id}/abzeichnen` | `{ kommentar? }` (Ausbilder/Admin) |
-| POST | `/woche/{id}/ablehnen` | `{ kommentar }`, Kommentar ist Pflicht (Ausbilder/Admin) |
+| GET | `/offen` | eingereichte Wochen (Ausbilder) |
+| POST | `/woche/{id}/abzeichnen` | `{ kommentar? }` (Ausbilder) |
+| POST | `/woche/{id}/ablehnen` | `{ kommentar }`, Kommentar ist Pflicht (Ausbilder) |
 
 ---
 
@@ -290,7 +304,7 @@ Tags und GitHub-Releases werden automatisch vom Workflow `.github/workflows/rele
 ```
 src/main/java/de/fisp/azubiprojekt
 ├── BerichtsheftApplication.java   Startklasse
-├── config/        Security, JWT-Filter, Passwort-Encoder, Demo-Daten
+├── config/        Security, JWT-Filter, Frontend-Auslieferung, Start-Aufgaben (Demo-Daten, Rahmenplan, erster Ausbilder)
 ├── controller/    REST-Endpunkte
 ├── dao/           Spring-Data-Repositories
 ├── dto/           Request-/Response-Objekte (Java Records)
@@ -299,6 +313,21 @@ src/main/java/de/fisp/azubiprojekt
 ├── service/       Geschäftslogik
 └── util/          Enums (Rollen, Lernziel-Arten, Status …)
 ```
+
+## Auf einem Server betreiben (Windows-Dienst)
+
+Backend und Frontend laufen zusammen als **ein Windows-Dienst**: Das Backend liefert das gebaute
+Frontend aus dem Ordner `frontend/` mit aus, die Seite ist unter `https://<Server>:8443/` erreichbar.
+
+```bat
+deploy\build-release.cmd        :: auf dem Entwicklungsrechner -> release\berichtsheft-<Version>.zip
+install.cmd                     :: auf dem Server im entpackten ZIP (als Administrator)
+```
+
+Das Release enthält eine eigene Java-Laufzeit, auf dem Server muss nichts installiert sein. Das
+Installationsskript legt den ersten Ausbilder-Zugang an, erzeugt das JWT-Geheimnis, öffnet die Firewall
+und richtet den Dienst mit [WinSW](https://github.com/winsw/winsw) ein. Updates mit `update.cmd`, Zertifikat ohne Browser-Warnung mit `zertifikat.cmd`.
+Alle Schritte, Optionen und Zertifikate: **[deploy/SERVER-ANLEITUNG.md](deploy/SERVER-ANLEITUNG.md)**.
 
 ## Docker
 

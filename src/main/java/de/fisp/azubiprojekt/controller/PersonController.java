@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/** Personen- und Benutzerverwaltung (Ausbilder: Azubis, Admin: alle). */
+/** Personen- und Benutzerverwaltung (nur Ausbilder). */
 @RestController
 @RequestMapping("/v1/person")
 public class PersonController {
@@ -26,13 +26,13 @@ public class PersonController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public List<PersonResponseDTO> getAll(@RequestParam(required = false) RoleEnum role) {
         return personService.getAll(role);
     }
 
     @GetMapping("/azubis")
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public List<PersonResponseDTO> getLearners() {
         return personService.getLearners();
     }
@@ -45,26 +45,26 @@ public class PersonController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public PersonResponseDTO create(@Valid @RequestBody PersonCreateRequestDTO request) {
         return personService.create(request);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public PersonResponseDTO update(@PathVariable Long id, @Valid @RequestBody PersonUpdateRequestDTO request) {
         return personService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public MessageResponseDTO delete(@PathVariable Long id) {
         personService.delete(id);
         return new MessageResponseDTO("Person gelöscht");
     }
 
     @PostMapping("/{id}/reset-password")
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public MessageResponseDTO resetPassword(@PathVariable Long id, @Valid @RequestBody PasswordResetRequestDTO request) {
         personService.resetPassword(id, request);
         return new MessageResponseDTO("Passwort zurückgesetzt");

@@ -101,8 +101,8 @@ public class PersonService {
         if (Objects.equals(id, currentUserService.getPersonId()) && request.role() != oldRole) {
             throw new ActionNotAllowedException("Du kannst deine eigene Rolle nicht ändern");
         }
-        if (oldRole == RoleEnum.ROLE_ADMIN && request.role() != RoleEnum.ROLE_ADMIN && isLastAdmin()) {
-            throw new InvalidRequestException("Es muss mindestens ein Administrator erhalten bleiben");
+        if (oldRole == RoleEnum.ROLE_TRAINER && request.role() != RoleEnum.ROLE_TRAINER && isLastTrainer()) {
+            throw new InvalidRequestException("Es muss mindestens ein Ausbilder erhalten bleiben");
         }
         if (oldRole.isLearner() && !request.role().isLearner() && !person.getBerichtshefte().isEmpty()) {
             throw new InvalidRequestException("Die Person hat bereits Berichtsheft-Einträge und kann deshalb "
@@ -142,8 +142,8 @@ public class PersonService {
         }
         Person person = findPerson(id);
         currentUserService.requireCanManage(person.getRole());
-        if (person.getRole() == RoleEnum.ROLE_ADMIN && isLastAdmin()) {
-            throw new InvalidRequestException("Der letzte Administrator kann nicht gelöscht werden");
+        if (person.getRole() == RoleEnum.ROLE_TRAINER && isLastTrainer()) {
+            throw new InvalidRequestException("Der letzte Ausbilder kann nicht gelöscht werden");
         }
         personDAO.delete(person);
     }
@@ -176,7 +176,7 @@ public class PersonService {
         }
     }
 
-    /** Ausbildungsberuf und -beginn gibt es nur fuer Lernende; bei Ausbildern/Admins werden sie geleert. */
+    /** Ausbildungsberuf und -beginn gibt es nur fuer Lernende; bei Ausbildern werden sie geleert. */
     private void applyRoleSpecificData(Person person, String beruf, LocalDate trainingStart) {
         if (person.getRole().isLearner()) {
             person.setBeruf(blankToNull(beruf));
@@ -195,8 +195,8 @@ public class PersonService {
                         personLernzielService.recomputeAncestors(person, grob.getId())));
     }
 
-    private boolean isLastAdmin() {
-        return personDAO.findByRole(RoleEnum.ROLE_ADMIN).size() <= 1;
+    private boolean isLastTrainer() {
+        return personDAO.findByRole(RoleEnum.ROLE_TRAINER).size() <= 1;
     }
 
     private Person findPerson(Long id) {

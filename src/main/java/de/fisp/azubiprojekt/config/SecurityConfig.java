@@ -54,8 +54,12 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/v1/passport/login", "/h2-console/**", "/error").permitAll()
-                        .anyRequest().authenticated())
+                        .requestMatchers("/v1/passport/login", "/v1/passport/optionen", "/v1/passport/sso",
+                                "/h2-console/**", "/error").permitAll()
+                        // Die REST-API braucht ein gueltiges Token ...
+                        .requestMatchers("/v1/**").authenticated()
+                        // ... das ausgelieferte Frontend (index.html, JS, CSS, Bilder) ist oeffentlich
+                        .anyRequest().permitAll())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((req, res, ex) ->
                                 writeError(res, HttpServletResponse.SC_UNAUTHORIZED, "Nicht angemeldet oder Sitzung abgelaufen"))

@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-/** Lernziele lesen (alle) und verwalten (Ausbilder/Admin). */
+/** Lernziele lesen (alle) und verwalten (Ausbilder). */
 @RestController
 @RequestMapping("/v1/lernziel")
 public class LernzielController {
@@ -49,26 +49,26 @@ public class LernzielController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public LernzielResponseDTO create(@Valid @RequestBody LernzielRequestDTO request) {
         return lernzielService.create(request);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public LernzielResponseDTO update(@PathVariable Long id, @Valid @RequestBody LernzielRequestDTO request) {
         return lernzielService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public MessageResponseDTO delete(@PathVariable Long id) {
         lernzielService.delete(id);
         return new MessageResponseDTO("Lernziel gelöscht");
     }
 
     @GetMapping(value = "/export", produces = "text/csv")
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public ResponseEntity<byte[]> exportCsv() {
         // BOM, damit Excel die Umlaute korrekt anzeigt
         byte[] body = ("﻿" + lernzielService.exportCsv()).getBytes(StandardCharsets.UTF_8);
@@ -79,7 +79,7 @@ public class LernzielController {
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('TRAINER','ADMIN')")
+    @PreAuthorize("hasRole('TRAINER')")
     public CsvImportResponseDTO importCsv(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             throw new InvalidRequestException("Die hochgeladene Datei ist leer");

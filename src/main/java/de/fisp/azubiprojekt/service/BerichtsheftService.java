@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.WeekFields;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -123,6 +124,7 @@ public class BerichtsheftService {
         eintrag.setArt(request.art());
         eintrag.setDescription(request.description() == null || request.description().isBlank() ? null : request.description().trim());
         eintrag.setQualifications(lernziele);
+        eintrag.setUpdatedAt(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
 
         Berichtsheft saved = berichtsheftDAO.save(eintrag);
         personLernzielService.markInProgress(person, lernziele);
@@ -133,7 +135,8 @@ public class BerichtsheftService {
      * Fachliche Regeln fuer einen Tageseintrag:
      * kein Datum in der Zukunft oder vor Ausbildungsbeginn, hoechstens 10 Stunden (ArbZG),
      * Betriebs- und Schultage brauchen Stunden und eine Beschreibung,
-     * an Urlaubs-, Krankheits- und Feiertagen werden keine Lernziele angegeben.
+     * an Berufsschul-, Urlaubs-, Krankheits- und Feiertagen werden keine Lernziele angegeben
+     * (Lernziele des Ausbildungsrahmenplans werden im Betrieb vermittelt).
      */
     void validateEintrag(Person person, BerichtsheftSaveRequestDTO request) {
         LocalDate date = request.date();
@@ -156,7 +159,11 @@ public class BerichtsheftService {
         }
         boolean abwesend = request.art() == EintragArtEnum.URLAUB || request.art() == EintragArtEnum.KRANK
                 || request.art() == EintragArtEnum.FEIERTAG;
-        if (abwesend && request.lernzielIds() != null && !request.lernzielIds().isEmpty()) {
+        boolean hatLernziele = request.lernzielIds() != null && !request.lernzielIds().isEmpty();
+        if (request.art() == EintragArtEnum.SCHULE && hatLernziele) {
+            throw new InvalidRequestException("An Berufsschultagen werden keine Lernziele angegeben");
+        }
+        if (abwesend && hatLernziele) {
             throw new InvalidRequestException("An Urlaubs-, Krankheits- und Feiertagen werden keine Lernziele angegeben");
         }
     }
