@@ -2,7 +2,15 @@
 
 ## [Unveröffentlicht]
 
+### Neu
+- **Benachrichtigungen** (`/v1/benachrichtigung`): Berichtsheft abgegeben (an alle Ausbilder, auch „erneut
+  abgegeben“), abgenommen und Korrekturbedarf (an den Azubi, mit Kommentar), Lernziel erreicht, Willkommen für
+  neue Zugänge. Täglich um 7 Uhr und nach dem Start eine Erinnerung an nicht abgegebene Berichtshefte der Vorwoche
+  (je Woche höchstens eine). Erledigte Anlässe gelten automatisch als gelesen.
+
 ### Geändert
+- Ausbilder sehen die Einträge einer Woche erst, wenn der Azubi sie abgegeben hat (`eintraegeSichtbar` in
+  `/woche`, nicht abgegebene Wochen fehlen in `/historie`). Zurückgegebene Wochen bleiben sichtbar.
 - Standard-Port **5016** statt 8443 (`PORT`), auch für `install.cmd`. Bestehende Installationen behalten
   bei `update.cmd` ihren Port.
 

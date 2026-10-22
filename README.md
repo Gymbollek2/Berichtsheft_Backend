@@ -38,6 +38,10 @@ Das passende Frontend liegt in [`Berichtsheft_Frontend`](https://github.com/Gymb
   - Wochenansicht mit Kalenderwoche und Stundensumme
   - Workflow: **Entwurf → Eingereicht → Abgezeichnet** bzw. **Zur Überarbeitung** (mit Pflichtkommentar)
   - Eingereichte und abgezeichnete Wochen sind gesperrt.
+  - Ausbilder sehen eine Woche erst, wenn der Azubi sie abgegeben hat.
+- **Benachrichtigungen** (Glocke im Frontend): Abgabe an alle Ausbilder, Abzeichnen und Korrekturbedarf an den Azubi,
+  erreichte Lernziele, Willkommen für neue Zugänge sowie eine tägliche Erinnerung (7 Uhr) an nicht abgegebene
+  Berichtshefte der Vorwoche. Ist eine Woche geprüft, gilt die Abgabe-Nachricht bei allen Ausbildern als gelesen.
 - **Demo-Daten** beim ersten Start, damit man sofort loslegen kann.
 - Einheitliche **Fehlermeldungen** als JSON (`status`, `message`, `timestamp`).
 
@@ -197,6 +201,7 @@ Alle Werte stehen in `src/main/resources/application.properties` und lassen sich
 | `SSO_DOMAINS` | – | nur Konten dieser Domänen zulassen (Kurzname, kommagetrennt) |
 | `PASSWORT_LOGIN` | `true` | Anmeldung mit Benutzername/Passwort zusätzlich erlauben |
 | `MAX_HEADER_SIZE` | `64KB` | maximale Header-Größe – Kerberos-Tickets mit vielen AD-Gruppen sind groß |
+| `app.erinnerungen.enabled` | `true` | tägliche Erinnerung an nicht abgegebene Berichtshefte der Vorwoche (Zeitpunkt: `app.erinnerungen.cron`, Standard 7 Uhr) |
 
 Mit `--spring.profiles.active=prod` gelten zusätzlich die Werte aus `application-prod.properties`:
 `JWT_SECRET` ist Pflicht, keine Demo-Daten, H2-Konsole aus, Logdatei unter `logs/`.
@@ -276,6 +281,18 @@ Für `art` gehen `Richtlernziel`, `Groblernziel` und `Feinlernziel`, die Kurzfor
 | GET | `/offen` | eingereichte Wochen (Ausbilder) |
 | POST | `/woche/{id}/abzeichnen` | `{ kommentar? }` (Ausbilder) |
 | POST | `/woche/{id}/ablehnen` | `{ kommentar }`, Kommentar ist Pflicht (Ausbilder) |
+
+Ausbilder sehen die Einträge einer Woche erst, wenn der Azubi sie abgegeben hat: `/woche` liefert dann
+`eintraegeSichtbar: false` ohne Einträge, `/historie` lässt nicht abgegebene Wochen weg.
+
+### Benachrichtigungen – `/v1/benachrichtigung`
+
+| Methode | Pfad | Beschreibung |
+|---|---|---|
+| GET | `/` | `{ ungelesen, eintraege }` – die 30 neuesten eigenen Nachrichten |
+| GET | `/anzahl` | `{ ungelesen }` – für die regelmäßige Abfrage |
+| POST | `/{id}/gelesen` | eine eigene Nachricht als gelesen markieren |
+| POST | `/gelesen` | alle eigenen Nachrichten als gelesen markieren |
 
 ---
 

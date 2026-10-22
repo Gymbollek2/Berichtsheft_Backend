@@ -12,6 +12,7 @@ import de.fisp.azubiprojekt.entity.Users;
 import de.fisp.azubiprojekt.exceptions.ActionNotAllowedException;
 import de.fisp.azubiprojekt.exceptions.InvalidRequestException;
 import de.fisp.azubiprojekt.exceptions.ResourceNotFoundException;
+import de.fisp.azubiprojekt.util.BenachrichtigungTypEnum;
 import de.fisp.azubiprojekt.util.RoleEnum;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -33,11 +34,13 @@ public class PersonService {
     private final CurrentUserService currentUserService;
     private final PersonLernzielService personLernzielService;
     private final LernzielDAO lernzielDAO;
+    private final BenachrichtigungService benachrichtigungService;
 
     public PersonService(PersonDAO personDAO, UserDAO userDAO, PasswordEncoder passwordEncoder,
                          CurrentUserService currentUserService, PersonLernzielService personLernzielService,
-                         LernzielDAO lernzielDAO) {
+                         LernzielDAO lernzielDAO, BenachrichtigungService benachrichtigungService) {
         this.lernzielDAO = lernzielDAO;
+        this.benachrichtigungService = benachrichtigungService;
         this.personDAO = personDAO;
         this.userDAO = userDAO;
         this.passwordEncoder = passwordEncoder;
@@ -89,6 +92,10 @@ public class PersonService {
             personLernzielService.assignAllLernziele(saved);
             lernzielRecompute(saved);
         }
+        benachrichtigungService.senden(saved, BenachrichtigungTypEnum.WILLKOMMEN, "Willkommen im Azubi-Portal",
+                currentUserService.getPerson().getFullName() + " hat deinen Zugang angelegt. Ändere am besten zuerst "
+                        + "dein Startpasswort unter „Mein Profil“.",
+                "/profil", null);
         return PersonResponseDTO.from(saved);
     }
 

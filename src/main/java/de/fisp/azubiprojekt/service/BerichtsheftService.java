@@ -16,6 +16,7 @@ import de.fisp.azubiprojekt.entity.Wochenbericht;
 import de.fisp.azubiprojekt.exceptions.ActionNotAllowedException;
 import de.fisp.azubiprojekt.exceptions.InvalidRequestException;
 import de.fisp.azubiprojekt.exceptions.ResourceNotFoundException;
+import de.fisp.azubiprojekt.util.BenachrichtigungTypEnum;
 import de.fisp.azubiprojekt.util.BerichtStatusEnum;
 import de.fisp.azubiprojekt.util.EintragArtEnum;
 import de.fisp.azubiprojekt.util.KindEnum;
@@ -47,16 +48,18 @@ public class BerichtsheftService {
     private final LernzielDAO lernzielDAO;
     private final CurrentUserService currentUserService;
     private final PersonLernzielService personLernzielService;
+    private final BenachrichtigungService benachrichtigungService;
 
     public BerichtsheftService(BerichtsheftDAO berichtsheftDAO, WochenberichtDAO wochenberichtDAO, LernzielDAO lernzielDAO,
                                PersonLernzielDAO personLernzielDAO, CurrentUserService currentUserService,
-                               PersonLernzielService personLernzielService) {
+                               PersonLernzielService personLernzielService, BenachrichtigungService benachrichtigungService) {
         this.berichtsheftDAO = berichtsheftDAO;
         this.personLernzielDAO = personLernzielDAO;
         this.wochenberichtDAO = wochenberichtDAO;
         this.lernzielDAO = lernzielDAO;
         this.currentUserService = currentUserService;
         this.personLernzielService = personLernzielService;
+        this.benachrichtigungService = benachrichtigungService;
     }
 
     // ------------------------------------------------------------------ Lesen
@@ -76,7 +79,10 @@ public class BerichtsheftService {
                 .toList();
     }
 
-    /** Alle Wochen einer Person, in denen etwas erfasst wurde (neueste zuerst). */
+    /**
+     * Alle Wochen einer Person, in denen etwas erfasst wurde (neueste zuerst).
+     * Ausbilder sehen nur Wochen, die der Azubi bereits abgegeben hat.
+     */
     @Transactional(readOnly = true)
     public List<WochenberichtSummaryDTO> getHistorie(Long personId) {
         Person person = currentUserService.resolveAccessiblePerson(personId);
@@ -94,12 +100,15 @@ public class BerichtsheftService {
             Wochenbericht w = berichte.get(ws);
             List<Berichtsheft> tage = eintraege.getOrDefault(ws, List.of());
             BerichtStatusEnum status = w == null ? BerichtStatusEnum.ENTWURF : w.getStatus();
+            if (!eintraegeSichtbar(person, status)) {
+                return null;
+            }
             return new WochenberichtSummaryDTO(
                     w == null ? null : w.getId(), person.getId(), person.getFullName(), ws,
                     kalenderwoche(ws), wochenJahr(ws), status, status.getLabel(),
                     tage.stream().mapToDouble(Berichtsheft::getHours).sum(), tage.size(),
                     w == null ? null : w.getEingereichtAm(), w == null ? null : w.getGeprueftAm());
-        }).toList();
+        }).filter(Objects::nonNull).toList();
     }
 
     // ------------------------------------------------------------------ Azubi: erfassen
@@ -215,9 +224,19 @@ public class BerichtsheftService {
 
         Wochenbericht bericht = wochenberichtDAO.findByPersonAndWeekStart(person, ws)
                 .orElseGet(() -> new Wochenbericht(person, ws));
+        boolean erneut = bericht.getStatus() == BerichtStatusEnum.ABGELEHNT;
         bericht.setStatus(BerichtStatusEnum.EINGEREICHT);
         bericht.setEingereichtAm(LocalDateTime.now());
-        wochenberichtDAO.save(bericht);
+        Wochenbericht saved = wochenberichtDAO.save(bericht);
+
+        benachrichtigungService.sendenAnAusbilder(BenachrichtigungTypEnum.BERICHT_ABGEGEBEN,
+                erneut ? "Berichtsheft erneut abgegeben" : "Berichtsheft abgegeben",
+                person.getFullName() + " hat das Berichtsheft für " + woche(ws)
+                        + (erneut ? " nach der Überarbeitung erneut abgegeben." : " abgegeben."),
+                "/berichtsheft/azubis/" + person.getId() + "?datum=" + ws, bezug(saved));
+        // Die Erinnerung an diese Woche hat sich damit erledigt
+        benachrichtigungService.erledigt(person, BenachrichtigungService.erinnerungsBezug(ws),
+                BenachrichtigungTypEnum.ERINNERUNG_ABGABE);
         return buildWoche(person, ws);
     }
 
@@ -226,10 +245,18 @@ public class BerichtsheftService {
     @Transactional
     public WochenberichtResponseDTO abzeichnen(Long wochenberichtId, String kommentar) {
         Wochenbericht bericht = findEingereicht(wochenberichtId);
+        String pruefer = currentUserService.getPerson().getFullName();
         bericht.setStatus(BerichtStatusEnum.ABGEZEICHNET);
         bericht.setKommentar(kommentar == null || kommentar.isBlank() ? null : kommentar.trim());
-        bericht.setGeprueftVon(currentUserService.getPerson().getFullName());
+        bericht.setGeprueftVon(pruefer);
         bericht.setGeprueftAm(LocalDateTime.now());
+
+        benachrichtigungService.senden(bericht.getPerson(), BenachrichtigungTypEnum.BERICHT_ABGEZEICHNET,
+                "Berichtsheft abgenommen",
+                pruefer + " hat dein Berichtsheft für " + woche(bericht.getWeekStart()) + " abgezeichnet."
+                        + (bericht.getKommentar() == null ? "" : " Kommentar: „" + bericht.getKommentar() + "“"),
+                eigeneWoche(bericht), bezug(bericht));
+        benachrichtigungService.erledigt(bezug(bericht), BenachrichtigungTypEnum.BERICHT_ABGEGEBEN);
         return buildWoche(bericht.getPerson(), bericht.getWeekStart());
     }
 
@@ -239,21 +266,39 @@ public class BerichtsheftService {
             throw new InvalidRequestException("Bitte gib einen Kommentar an, was ueberarbeitet werden soll");
         }
         Wochenbericht bericht = findEingereicht(wochenberichtId);
+        String pruefer = currentUserService.getPerson().getFullName();
         bericht.setStatus(BerichtStatusEnum.ABGELEHNT);
         bericht.setKommentar(kommentar.trim());
-        bericht.setGeprueftVon(currentUserService.getPerson().getFullName());
+        bericht.setGeprueftVon(pruefer);
         bericht.setGeprueftAm(LocalDateTime.now());
+
+        benachrichtigungService.senden(bericht.getPerson(), BenachrichtigungTypEnum.BERICHT_ZURUECKGEGEBEN,
+                "Korrekturbedarf",
+                pruefer + " hat dein Berichtsheft für " + woche(bericht.getWeekStart())
+                        + " zur Überarbeitung zurückgegeben: „" + bericht.getKommentar() + "“",
+                eigeneWoche(bericht), bezug(bericht));
+        benachrichtigungService.erledigt(bezug(bericht), BenachrichtigungTypEnum.BERICHT_ABGEGEBEN);
         return buildWoche(bericht.getPerson(), bericht.getWeekStart());
     }
 
     // ------------------------------------------------------------------ Hilfsmethoden
 
+    /**
+     * Ausbilder sehen die Eintraege einer Woche erst, wenn der Azubi sie abgegeben hat. Zurueckgegebene Wochen
+     * bleiben sichtbar – sie waren schon abgegeben, und der Kommentar bezieht sich auf ihren Inhalt.
+     */
+    private boolean eintraegeSichtbar(Person person, BerichtStatusEnum status) {
+        return status != BerichtStatusEnum.ENTWURF || Objects.equals(person.getId(), currentUserService.getPersonId());
+    }
+
     private WochenberichtResponseDTO buildWoche(Person person, LocalDate ws) {
         LocalDate we = ws.plusDays(6);
-        Map<LocalDate, Berichtsheft> eintraege = berichtsheftDAO.findByPersonAndDateBetweenOrderByDateAsc(person, ws, we)
-                .stream().collect(Collectors.toMap(Berichtsheft::getDate, b -> b));
         Optional<Wochenbericht> bericht = wochenberichtDAO.findByPersonAndWeekStart(person, ws);
         BerichtStatusEnum status = bericht.map(Wochenbericht::getStatus).orElse(BerichtStatusEnum.ENTWURF);
+        boolean sichtbar = eintraegeSichtbar(person, status);
+        Map<LocalDate, Berichtsheft> eintraege = !sichtbar ? Map.of()
+                : berichtsheftDAO.findByPersonAndDateBetweenOrderByDateAsc(person, ws, we)
+                .stream().collect(Collectors.toMap(Berichtsheft::getDate, b -> b));
 
         List<WochenTagDTO> tage = new ArrayList<>();
         for (int i = 0; i < 7; i++) {
@@ -274,7 +319,21 @@ public class BerichtsheftService {
                 bericht.map(Wochenbericht::getEingereichtAm).orElse(null),
                 bericht.map(Wochenbericht::getGeprueftAm).orElse(null),
                 eintraege.values().stream().mapToDouble(Berichtsheft::getHours).sum(),
+                sichtbar,
                 tage);
+    }
+
+    private static String woche(LocalDate ws) {
+        return "KW " + kalenderwoche(ws) + "/" + wochenJahr(ws);
+    }
+
+    private static String bezug(Wochenbericht w) {
+        return "wochenbericht:" + w.getId();
+    }
+
+    /** Link fuer den Azubi auf seine eigene Woche. */
+    private static String eigeneWoche(Wochenbericht w) {
+        return "/berichtsheft?datum=" + w.getWeekStart();
     }
 
     private WochenberichtSummaryDTO summary(Wochenbericht w) {

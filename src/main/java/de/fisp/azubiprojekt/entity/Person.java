@@ -45,6 +45,10 @@ public class Person {
     @OneToMany(mappedBy = "person", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Wochenbericht> wochenberichte = new ArrayList<>();
 
+    /** Nur fuer das Loeschen der Person (Nachrichten werden mit entfernt) – gelesen wird ueber den DAO. */
+    @OneToMany(mappedBy = "empfaenger", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<Benachrichtigung> benachrichtigungen = new ArrayList<>();
+
     public Person() {
     }
 

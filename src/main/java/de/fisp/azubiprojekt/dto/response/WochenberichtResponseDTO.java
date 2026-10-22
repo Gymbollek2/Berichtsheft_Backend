@@ -6,7 +6,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** Vollstaendige Ansicht einer Kalenderwoche (Montag bis Sonntag) eines Azubis. */
+/**
+ * Vollstaendige Ansicht einer Kalenderwoche (Montag bis Sonntag) eines Azubis.
+ * {@code eintraegeSichtbar} ist false, wenn ein Ausbilder eine noch nicht abgegebene Woche oeffnet –
+ * dann sind {@code tage} ohne Eintraege und {@code gesamtStunden} ist 0.
+ */
 public record WochenberichtResponseDTO(
         Long id,
         Long personId,
@@ -25,5 +29,6 @@ public record WochenberichtResponseDTO(
         LocalDateTime eingereichtAm,
         LocalDateTime geprueftAm,
         double gesamtStunden,
+        boolean eintraegeSichtbar,
         List<WochenTagDTO> tage) {
 }

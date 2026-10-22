@@ -10,6 +10,7 @@ import de.fisp.azubiprojekt.entity.Person;
 import de.fisp.azubiprojekt.entity.PersonLernziel;
 import de.fisp.azubiprojekt.exceptions.InvalidRequestException;
 import de.fisp.azubiprojekt.exceptions.ResourceNotFoundException;
+import de.fisp.azubiprojekt.util.BenachrichtigungTypEnum;
 import de.fisp.azubiprojekt.util.RoleEnum;
 import de.fisp.azubiprojekt.util.StatusEnum;
 import org.springframework.stereotype.Service;
@@ -37,13 +38,15 @@ public class PersonLernzielService {
     private final LernzielDAO lernzielDAO;
     private final PersonDAO personDAO;
     private final CurrentUserService currentUserService;
+    private final BenachrichtigungService benachrichtigungService;
 
     public PersonLernzielService(PersonLernzielDAO personLernzielDAO, LernzielDAO lernzielDAO, PersonDAO personDAO,
-                                 CurrentUserService currentUserService) {
+                                 CurrentUserService currentUserService, BenachrichtigungService benachrichtigungService) {
         this.personLernzielDAO = personLernzielDAO;
         this.lernzielDAO = lernzielDAO;
         this.personDAO = personDAO;
         this.currentUserService = currentUserService;
+        this.benachrichtigungService = benachrichtigungService;
     }
 
     /** Lernziele einer Person (Azubis nur sich selbst), optional gefiltert nach Status. */
@@ -86,9 +89,16 @@ public class PersonLernzielService {
             throw new InvalidRequestException("Der Status von '" + pl.getLernziel().getTitle()
                     + "' wird automatisch aus den " + children + " untergeordneten Lernzielen berechnet");
         }
+        boolean neuErreicht = status == StatusEnum.STATUS_DONE && pl.getStatus() != StatusEnum.STATUS_DONE;
         pl.setStatus(status);
         PersonLernziel saved = personLernzielDAO.save(pl);
         recomputeAncestors(saved.getPerson(), saved.getLernziel().getParentId());
+        if (neuErreicht) {
+            benachrichtigungService.senden(saved.getPerson(), BenachrichtigungTypEnum.LERNZIEL_ERREICHT, "Lernziel erreicht",
+                    currentUserService.getPerson().getFullName() + " hat „" + saved.getLernziel().getTitle()
+                            + "“ als erreicht markiert.",
+                    "/personen-lernziele-view", "personLernziel:" + saved.getId());
+        }
         return PersonLernzielResponseDTO.from(saved, 0);
     }
 
