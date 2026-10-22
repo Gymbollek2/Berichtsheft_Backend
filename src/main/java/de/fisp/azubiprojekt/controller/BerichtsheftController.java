@@ -69,6 +69,14 @@ public class BerichtsheftController {
         return berichtsheftService.abzeichnen(id, request == null ? null : request.kommentar());
     }
 
+    /** Abgenommene Woche wieder zur Bearbeitung freigeben ({@code kommentar} = optionaler Grund). */
+    @PostMapping("/woche/{id}/wieder-oeffnen")
+    @PreAuthorize("hasRole('TRAINER')")
+    public WochenberichtResponseDTO wiederOeffnen(@PathVariable Long id,
+                                                  @Valid @RequestBody(required = false) WochenPruefungRequestDTO request) {
+        return berichtsheftService.wiederOeffnen(id, request == null ? null : request.kommentar());
+    }
+
     @PostMapping("/woche/{id}/ablehnen")
     @PreAuthorize("hasRole('TRAINER')")
     public WochenberichtResponseDTO ablehnen(@PathVariable Long id, @Valid @RequestBody WochenPruefungRequestDTO request) {

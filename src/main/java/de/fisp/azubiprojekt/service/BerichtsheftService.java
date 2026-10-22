@@ -281,6 +281,33 @@ public class BerichtsheftService {
         return buildWoche(bericht.getPerson(), bericht.getWeekStart());
     }
 
+    /**
+     * Oeffnet eine bereits abgenommene Woche wieder: Sie steht danach auf "Zur Ueberarbeitung", der Azubi kann sie
+     * bearbeiten und erneut abgeben. Der Grund ist optional; der Kommentar der Abnahme wird ersetzt.
+     */
+    @Transactional
+    public WochenberichtResponseDTO wiederOeffnen(Long wochenberichtId, String grund) {
+        Wochenbericht bericht = wochenberichtDAO.findById(wochenberichtId)
+                .orElseThrow(() -> new ResourceNotFoundException("Wochenbericht " + wochenberichtId + " nicht gefunden"));
+        if (bericht.getStatus() != BerichtStatusEnum.ABGEZEICHNET) {
+            throw new InvalidRequestException("Nur abgenommene Wochen können wieder geöffnet werden (aktuell: "
+                    + bericht.getStatus().getLabel() + ")");
+        }
+        String pruefer = currentUserService.getPerson().getFullName();
+        bericht.setStatus(BerichtStatusEnum.ABGELEHNT);
+        bericht.setKommentar(grund == null || grund.isBlank() ? null : grund.trim());
+        bericht.setGeprueftVon(pruefer);
+        bericht.setGeprueftAm(LocalDateTime.now());
+
+        benachrichtigungService.senden(bericht.getPerson(), BenachrichtigungTypEnum.BERICHT_WIEDER_GEOEFFNET,
+                "Berichtsheft wieder geöffnet",
+                pruefer + " hat dein Berichtsheft für " + woche(bericht.getWeekStart())
+                        + " wieder zur Bearbeitung geöffnet."
+                        + (bericht.getKommentar() == null ? "" : " Grund: „" + bericht.getKommentar() + "“"),
+                eigeneWoche(bericht), bezug(bericht));
+        return buildWoche(bericht.getPerson(), bericht.getWeekStart());
+    }
+
     // ------------------------------------------------------------------ Hilfsmethoden
 
     /**

@@ -8,6 +8,8 @@ public enum BenachrichtigungTypEnum {
     BERICHT_ABGEZEICHNET,
     /** An den Azubi: Das Berichtsheft wurde zur Ueberarbeitung zurueckgegeben. */
     BERICHT_ZURUECKGEGEBEN,
+    /** An den Azubi: Ein bereits abgenommenes Berichtsheft wurde wieder zur Bearbeitung geoeffnet. */
+    BERICHT_WIEDER_GEOEFFNET,
     /** An den Azubi: Das Berichtsheft der Vorwoche ist noch nicht abgegeben. */
     ERINNERUNG_ABGABE,
     /** An den Azubi: Ein Ausbilder hat ein Lernziel als erreicht markiert. */

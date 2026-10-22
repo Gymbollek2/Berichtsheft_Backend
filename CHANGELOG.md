@@ -7,6 +7,10 @@
   abgegeben“), abgenommen und Korrekturbedarf (an den Azubi, mit Kommentar), Lernziel erreicht, Willkommen für
   neue Zugänge. Täglich um 7 Uhr und nach dem Start eine Erinnerung an nicht abgegebene Berichtshefte der Vorwoche
   (je Woche höchstens eine). Erledigte Anlässe gelten automatisch als gelesen.
+- **Abgenommene Woche wieder öffnen** (`POST /v1/berichtsheft/woche/{id}/wieder-oeffnen`, Ausbilder, Grund
+  optional): Die Woche steht danach auf „Zur Überarbeitung“, der Azubi wird benachrichtigt.
+- Start-Migration `BenachrichtigungTypMigration`: stellt `benachrichtigung.typ` von H2-ENUM auf Text um, damit
+  neue Benachrichtigungstypen auch in bestehenden Datenbanken gespeichert werden können.
 
 ### Geändert
 - Ausbilder sehen die Einträge einer Woche erst, wenn der Azubi sie abgegeben hat (`eintraegeSichtbar` in

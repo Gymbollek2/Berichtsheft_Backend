@@ -188,6 +188,46 @@ class BenachrichtigungApiTest {
     }
 
     @Test
+    void abgenommeneWocheWiederOeffnen() throws Exception {
+        String azubi = login("azubi2", "azubi123");
+        String trainer = login("ausbilder", "ausbilder123");
+        Integer wochenId = wocheAbgeben(azubi);
+        String wiederOeffnen = "/v1/berichtsheft/woche/" + wochenId + "/wieder-oeffnen";
+
+        // Nur abgenommene Wochen, nur Ausbilder
+        mvc.perform(post(wiederOeffnen).header("Authorization", trainer)).andExpect(status().isBadRequest());
+        mvc.perform(post("/v1/berichtsheft/woche/" + wochenId + "/abzeichnen").header("Authorization", trainer)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"kommentar\":\"Passt\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(post(wiederOeffnen).header("Authorization", azubi)).andExpect(status().isForbidden());
+
+        mvc.perform(post(wiederOeffnen).header("Authorization", trainer)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"kommentar\":\"Bitte Freitag ergänzen\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ABGELEHNT"))
+                .andExpect(jsonPath("$.kommentar").value("Bitte Freitag ergänzen"));
+
+        // Der Azubi wird benachrichtigt und kann wieder bearbeiten und erneut abgeben
+        mvc.perform(get("/v1/benachrichtigung").header("Authorization", azubi))
+                .andExpect(jsonPath("$.eintraege[0].typ").value("BERICHT_WIEDER_GEOEFFNET"))
+                .andExpect(jsonPath("$.eintraege[0].titel").value("Berichtsheft wieder geöffnet"))
+                .andExpect(jsonPath("$.eintraege[0].text", containsString("Bitte Freitag ergänzen")));
+        mvc.perform(get("/v1/berichtsheft/woche").param("datum", montag.toString()).header("Authorization", azubi))
+                .andExpect(jsonPath("$.editierbar").value(true));
+        tagErfassen(azubi, montag.plusDays(4));
+        mvc.perform(post("/v1/berichtsheft/woche/einreichen").header("Authorization", azubi)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"datum\":\"" + montag + "\"}"))
+                .andExpect(jsonPath("$.status").value("EINGEREICHT"));
+
+        // Ohne Grund geht es auch (nach erneuter Abnahme)
+        mvc.perform(post("/v1/berichtsheft/woche/" + wochenId + "/abzeichnen").header("Authorization", trainer))
+                .andExpect(status().isOk());
+        mvc.perform(post(wiederOeffnen).header("Authorization", trainer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.kommentar").value(nullValue()));
+    }
+
+    @Test
     void gelesenMarkierenNurFuerEigeneNachrichten() throws Exception {
         String azubi = login("azubi2", "azubi123");
         String trainer = login("ausbilder", "ausbilder123");

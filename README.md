@@ -281,6 +281,7 @@ Für `art` gehen `Richtlernziel`, `Groblernziel` und `Feinlernziel`, die Kurzfor
 | GET | `/offen` | eingereichte Wochen (Ausbilder) |
 | POST | `/woche/{id}/abzeichnen` | abnehmen: `{ kommentar? }` (Ausbilder) |
 | POST | `/woche/{id}/ablehnen` | `{ kommentar }`, Kommentar ist Pflicht (Ausbilder) |
+| POST | `/woche/{id}/wieder-oeffnen` | `{ kommentar? }` – abgenommene Woche wieder zur Bearbeitung öffnen (Ausbilder) |
 
 Ausbilder sehen die Einträge einer Woche erst, wenn der Azubi sie abgegeben hat: `/woche` liefert dann
 `eintraegeSichtbar: false` ohne Einträge, `/historie` lässt nicht abgegebene Wochen weg.
