@@ -7,6 +7,16 @@
   abgegeben“), abgenommen und Korrekturbedarf (an den Azubi, mit Kommentar), Lernziel erreicht, Willkommen für
   neue Zugänge. Täglich um 7 Uhr und nach dem Start eine Erinnerung an nicht abgegebene Berichtshefte der Vorwoche
   (je Woche höchstens eine). Erledigte Anlässe gelten automatisch als gelesen.
+- **Setup mit Assistent**: `deploy/build-setup.cmd` baut `release/Berichtsheft-Setup-<Version>.zip` in wenigen
+  Sekunden (nur Geändertes wird gebaut, Frontend und Backend parallel, Java-Laufzeit zwischengespeichert, Tests
+  mit `-MitTests`). Auf dem Server entpacken und `Setup.cmd` starten (PowerShell-Fenster im Design der
+  Webanwendung): Das Setup findet eine vorhandene Installation selbst (Windows-Dienst, alle lokalen Laufwerke),
+  zeigt Speicherort, Versionen, Windows-Anmeldung (An/Aus mit aktuellem Stand) und die Änderungen laut
+  CHANGELOG und aktualisiert – auf Wunsch an einen neuen Ort und mit geänderten Einstellungen (Servernamen,
+  Port, Zertifikat mit Prüfung). Ohne Installation führt es in vier Schritten durch die Neuinstallation.
+  Verwaltung und Deinstallation über `Verwaltung.cmd` im Installationsordner bzw. „Apps / Programme und
+  Features“. Ersetzt `build-release`, `install`, `update`, `uninstall` und `zertifikat`; ältere Installationen
+  werden erkannt.
 - **Live-Benachrichtigungen** (`GET /v1/benachrichtigung/live`, Server-Sent Events): Jede neue, gelesene oder
   erledigte Benachrichtigung wird den offenen Browser-Tabs der betroffenen Person sofort gemeldet. Lebenszeichen
   alle 25 Sekunden, Verbindung nach 30 Minuten neu.

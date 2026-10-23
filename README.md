@@ -338,14 +338,18 @@ Backend und Frontend laufen zusammen als **ein Windows-Dienst**: Das Backend lie
 Frontend aus dem Ordner `frontend/` mit aus, die Seite ist unter `https://<Server>:5016/` erreichbar.
 
 ```bat
-deploy\build-release.cmd        :: auf dem Entwicklungsrechner -> release\berichtsheft-<Version>.zip
-install.cmd                     :: auf dem Server im entpackten ZIP (als Administrator)
+deploy\build-setup.cmd          :: auf dem Entwicklungsrechner -> release\Berichtsheft-Setup-<Version>.zip
 ```
 
-Das Release enthält eine eigene Java-Laufzeit, auf dem Server muss nichts installiert sein. Das
-Installationsskript legt den ersten Ausbilder-Zugang an, erzeugt das JWT-Geheimnis, öffnet die Firewall
-und richtet den Dienst mit [WinSW](https://github.com/winsw/winsw) ein. Updates mit `update.cmd`, Zertifikat ohne Browser-Warnung mit `zertifikat.cmd`.
-Alle Schritte, Optionen und Zertifikate: **[deploy/SERVER-ANLEITUNG.md](deploy/SERVER-ANLEITUNG.md)**.
+Gebaut wird nur, was sich geändert hat (ohne Änderungen wenige Sekunden; Tests mit `-MitTests`). Das ZIP auf
+dem Server in einen beliebigen Ordner entpacken und `Setup.cmd` starten. Der Assistent (PowerShell-Fenster im
+Design der Webanwendung) sucht selbst nach einer vorhandenen Installation: Gibt es keine, führt er durch die
+Installation (Speicherort, Adresse/Port/Zertifikat, Anmeldung und erster Ausbilder). Gibt es eine, zeigt er
+Speicherort, Versionen, Windows-Anmeldung (An/Aus) und die Änderungen laut CHANGELOG und aktualisiert – auf
+Wunsch auch an einen neuen Ort und mit geänderten Einstellungen. Eine eigene Java-Laufzeit und
+[WinSW](https://github.com/winsw/winsw) für den Dienst sind enthalten, auf dem Server muss nichts installiert
+sein. Die Skripte des Setups liegen in `deploy/setup`.
+Alle Schritte, Zertifikate und Windows-Anmeldung: **[deploy/SERVER-ANLEITUNG.md](deploy/SERVER-ANLEITUNG.md)**.
 
 ## Docker
 

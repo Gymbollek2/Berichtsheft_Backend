@@ -7,113 +7,123 @@ das Frontend mit aus, die Seite ist danach im Netzwerk erreichbar unter
 https://<Servername>:5016/
 ```
 
-Der Dienst startet automatisch mit Windows und nach einem Absturz neu.
+Der Dienst startet automatisch mit Windows und nach einem Absturz neu. Installieren, Aktualisieren,
+Einstellungen ändern, Verschieben und Deinstallieren erledigt **ein Setup mit Assistent** (PowerShell-Fenster
+im Design der Webanwendung).
 
 ---
 
-## 1. Release bauen (auf dem Entwicklungsrechner)
+## 1. Setup bauen (auf dem Entwicklungsrechner)
 
-Voraussetzungen: **JDK 21** (`JAVA_HOME` gesetzt), **Node.js 20+**, Internetzugang, beide Projekte
-nebeneinander ausgecheckt (`…\Berichtsheft_Backend` und `…\Berichtsheft_Frontend`).
+Voraussetzungen: **JDK 21** (`JAVA_HOME` gesetzt), **Node.js 20+**, beim ersten Mal Internetzugang,
+beide Projekte nebeneinander ausgecheckt (`…\Berichtsheft_Backend` und `…\Berichtsheft_Frontend`).
 
 ```bat
 cd Berichtsheft_Backend
-deploy\build-release.cmd
+deploy\build-setup.cmd
 ```
 
-Ergebnis: `release\berichtsheft-<Version>.zip` mit
+Ergebnis: **`release\Berichtsheft-Setup-<Version>.zip`** (ca. 130 MB). Gebaut wird nur, was sich geändert
+hat – ohne Änderungen dauert das wenige Sekunden:
+
+| Was | Wann |
+|---|---|
+| Frontend (`ng build`) | nur nach Änderungen im Frontend |
+| Backend (Maven, ohne Tests) | nur nach Änderungen im Backend – parallel zum Frontend |
+| Java-Laufzeit (jlink), WinSW | einmalig, danach aus `release\_cache` |
+
+Optionen: `-MitTests` (vorher alle Tests), `-Neu` (alles neu bauen), `-FrontendPfad D:\…\Berichtsheft_Frontend`.
+
+Inhalt des ZIP:
 
 | Inhalt | Zweck |
 |---|---|
-| `berichtsheft.jar` | Backend (Spring Boot) |
-| `frontend\` | gebautes Angular-Frontend |
-| `jre\` | eigene Java-Laufzeit – auf dem Server muss **kein Java** installiert sein |
-| `berichtsheft-service.exe` | [WinSW](https://github.com/winsw/winsw) – startet die Anwendung als Dienst |
-| `install.cmd`, `update.cmd`, `uninstall.cmd` | Einrichten, Aktualisieren, Entfernen |
-| `zertifikat.cmd` | Zertifikat der Firmen-CA einspielen oder das aktuelle Zertifikat zum Verteilen exportieren (siehe 3.) |
-
-Optionen: `-FrontendPfad D:\…\Berichtsheft_Frontend` (anderer Ort), `-OhneTests`, `-OhneJava`
-(kleineres Paket, dann braucht der Server Java 21).
+| `Setup.cmd`, `setup\` | der Assistent (PowerShell) |
+| `app\berichtsheft.jar` | Backend (Spring Boot) |
+| `app\frontend\` | gebautes Angular-Frontend |
+| `app\jre\` | eigene Java-Laufzeit – auf dem Server muss **kein Java** installiert sein |
+| `app\berichtsheft-service.exe` | [WinSW](https://github.com/winsw/winsw) – startet die Anwendung als Dienst |
+| `info\` | Version und beide CHANGELOGs (zeigen beim Aktualisieren, was neu ist) |
 
 > Kann WinSW nicht heruntergeladen werden (Proxy), die Datei
 > `https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe` von Hand laden,
-> als `release\WinSW-x64.exe` ablegen und erneut bauen.
+> als `release\_cache\WinSW-x64.exe` ablegen und erneut bauen.
 
-## 2. Installieren (auf dem Server)
+## 2. Setup auf dem Server ausführen
 
-1. ZIP auf den Server kopieren und entpacken, z. B. nach `C:\Temp\berichtsheft-1.4.0`.
-2. `install.cmd` doppelklicken (fragt nach Administratorrechten).
-3. Passwort für den ersten Ausbilder-Zugang `ausbilder` eingeben.
+Das ZIP auf den Server kopieren, **in einen beliebigen Ordner entpacken** (z. B. `C:\Temp`) und
+**`Setup.cmd`** doppelklicken (fragt nach Administratorrechten). Das Setup sucht zuerst selbst nach einer
+vorhandenen Installation – über den Windows-Dienst und auf allen lokalen Laufwerken.
 
-Das Skript kopiert alles nach **`F:\Program Files\Berichtsheft`** (anderer Ort: `-Zielordner`), erzeugt ein zufälliges JWT-Geheimnis, öffnet den
-Port in der Firewall (Domänen- und private Netzwerke), installiert den Dienst und startet ihn.
-Am Ende steht die Adresse, z. B. `https://srv-ausbildung.firma.local:5016/`.
+### Noch nicht installiert → Neuinstallation in vier Schritten
 
-Nach der ersten Anmeldung das Passwort unter **Profil** ändern und weitere Ausbilder und Azubis unter
-**Personen** anlegen. Die Lernziele des Ausbildungsrahmenplans sind bereits eingespielt.
+1. **Speicherort** – Vorschlag `F:\Program Files\Berichtsheft` (ohne Laufwerk F: unter `C:\Program Files`).
+   Dort liegen auch Datenbank (`data`), Protokolle (`logs`) und Sicherungen (`backup`).
+2. **Adresse, Port und Zertifikat** – Servernamen (der volle Name zuerst, z. B. `scapa02e.f-i-sp.de`),
+   Port (Standard 5016; ein belegter Port wird erkannt), Zertifikat: selbstsigniert oder eigene `.pfx`
+   (wird vorher geprüft: Passwort, privater Schlüssel, Ablaufdatum, Servernamen).
+3. **Anmeldung** – Windows-Anmeldung An/Aus, optional nur bestimmte Domänen, Passwort-Anmeldung als
+   Ausweg; **erster Ausbilder-Zugang** (Benutzername, Name, Passwort). Liegt im Ordner schon eine
+   Datenbank, gelten die bisherigen Zugänge.
+4. **Zusammenfassung** → *Installieren*.
 
-### Optionen
+Das Setup kopiert die Anwendung, erzeugt das JWT-Geheimnis und die Dienst-Konfiguration, öffnet den Port
+in der Firewall (Domänen- und private Netzwerke), richtet den Dienst ein, startet ihn und wartet, bis die
+Seite antwortet. Am Ende steht die Adresse zum Anklicken.
 
-```powershell
-.\install.cmd -Port 443 `
-              -Hostnamen berichtsheft.firma.local `
-              -ZertifikatDatei D:\Zertifikate\berichtsheft.pfx `
-              -Zielordner D:\Apps\Berichtsheft `
-              -AusbilderBenutzer petra.pruefer -AusbilderVorname Petra -AusbilderNachname Pruefer
-```
+### Schon installiert → Änderungen ansehen und aktualisieren
 
-| Option | Bedeutung |
-|---|---|
-| `-Port` | HTTPS-Port (Standard 5016). Mit 443 entfällt die Portangabe in der Adresse. |
-| `-Hostnamen` | weitere Namen/DNS-Aliase, unter denen der Server aufgerufen wird |
-| `-ZertifikatDatei` | eigenes Zertifikat (.pfx), siehe unten – Passwort wird abgefragt |
-| `-OhneHttps` | nur HTTP, wenn ein IIS/Reverse-Proxy davor HTTPS übernimmt |
-| `-DemoDaten` | Demo-Zugänge statt eigenem Ausbilder (nur zum Ausprobieren) |
-| `-Speicher` | maximaler Arbeitsspeicher für Java (Standard `768m`) |
+Das Setup zeigt
+
+- den **aktuellen Speicherort** – mit *Ort ändern …* wird beim Aktualisieren alles (auch Datenbank und
+  Sicherungen) in einen neuen, leeren Ordner verschoben; der alte Ordner wird danach gelöscht,
+- installierte und neue **Version**,
+- die **Windows-Anmeldung** mit dem aktuellen Stand (*Derzeit: an/aus*) – mit *An* / *Aus* umschalten,
+- die **Änderungen** gegenüber der installierten Version (aus den CHANGELOGs),
+- optional *weitere Einstellungen ändern* (Servernamen, Port, Zertifikat, Domänen, Passwort-Anmeldung).
+
+Mit *Aktualisieren*: Dienst anhalten → Datenbank nach `backup\<Datum>` sichern → (verschieben) → neue
+Version einspielen → Dienst starten. Datenbank, Logs, Port und Zertifikat bleiben erhalten.
+
+Werden mehrere Installationen gefunden, fragt das Setup, welche gemeint ist. Ältere Installationen
+(aus den früheren ZIP-Releases mit `install.cmd`) werden genauso erkannt und dabei aufgeräumt.
+
+### Verwaltung ohne neue Version
+
+Bei jeder Installation legt das Setup **`Verwaltung.cmd`** in den Installationsordner und trägt das
+Berichtsheft unter **Apps / Programme und Features** ein. Darüber lassen sich jederzeit die
+Windows-Anmeldung umschalten, Einstellungen ändern, der Speicherort wechseln oder das Berichtsheft
+**deinstallieren** (wahlweise mit oder ohne Daten). Dasselbe geht auch mit jedem Setup
+(Knopf *Deinstallieren …* unten links).
+
+Jeder Lauf schreibt ein Protokoll nach `logs\setup-<Datum>.log`.
 
 ## 3. Zertifikat
 
-Ohne `-ZertifikatDatei` erzeugt die Anwendung beim ersten Start ein **selbstsigniertes** Zertifikat
-für den Rechnernamen, den vollen DNS-Namen, die IP-Adressen und `localhost`. Das funktioniert sofort,
-Browser zeigen aber eine Warnung („Verbindung nicht privat“).
+Ohne eigenes Zertifikat erzeugt die Anwendung beim ersten Start ein **selbstsigniertes** Zertifikat
+für die angegebenen Servernamen, die IP-Adressen und `localhost`. Das funktioniert sofort, Browser
+zeigen aber „Nicht sicher“.
 
-Ob ein Browser die Seite als **sicher** anzeigt, hängt nur am Zertifikat: Es muss von einer Stelle
-stammen, der der Arbeitsplatz vertraut, und den Namen enthalten, unter dem die Seite aufgerufen wird.
-Dafür gibt es zwei Wege, beide mit `zertifikat.cmd` (im Installationsordner, als Administrator):
+Ob ein Browser die Seite als **sicher** anzeigt, entscheidet **der Rechner, auf dem der Browser läuft**:
+Das Zertifikat muss von einer Stelle stammen, der dieser Rechner vertraut, und den Namen enthalten,
+unter dem die Seite aufgerufen wird. Zwei Wege:
 
-**a) Zertifikat der Firmen-CA (empfohlen).** Bei der IT ein Server-Zertifikat anfragen:
+**a) Zertifikat der Firmen-CA (empfohlen).** Bei der IT ein Webserver-Zertifikat anfragen:
 
-- Name(n): der Name, unter dem alle die Seite aufrufen, z. B. `srv-ausbildung.firma.local`
-  (alle Namen, die `zertifikat.cmd -Exportieren` unter „Ausgestellt für“ zeigt, sind sinnvoll)
+- Name(n): der Name, unter dem alle die Seite aufrufen, z. B. `scapa02e.f-i-sp.de` (plus ggf. Kurzname/Alias)
 - Format: **.pfx mit privatem Schlüssel** und Zwischenzertifikaten, dazu das Passwort
 
-Einspielen – der Dienst wird kurz neu gestartet, Daten und Anmeldungen bleiben:
+Einspielen: Setup (oder `Verwaltung.cmd`) starten → *weitere Einstellungen ändern* → *Eigenes
+Zertifikat* → Datei und Passwort → *Prüfen* → weiter. Firmenrechner vertrauen der Firmen-CA bereits.
 
-```powershell
-.\zertifikat.cmd -ZertifikatDatei D:\Zertifikate\berichtsheft.pfx
-```
+**b) Selbstsigniertes Zertifikat verteilen** (wenn die IT keins ausstellt): Die Seite im Browser öffnen,
+Schloss-Symbol → Zertifikat → *Details* → *In Datei kopieren* (`.cer`). Die Datei auf **jedem Arbeitsplatz**
+(nicht auf dem Server) unter **Vertrauenswürdige Stammzertifizierungsstellen** eintragen – per
+Gruppenrichtlinie (IT) oder von Hand: Doppelklick → *Zertifikat installieren* → *Lokaler Computer*.
+Danach Browser komplett neu starten. Werden die Servernamen geändert, entsteht ein neues Zertifikat,
+das erneut verteilt werden muss.
 
-Das Skript prüft vorher Passwort, privaten Schlüssel, Ablaufdatum und ob die Servernamen im Zertifikat
-stehen. Der vorherige Stand wird unter `data\ssl\*.alt` gesichert. Firmenrechner vertrauen der
-Firmen-CA bereits, es ist also nichts weiter zu tun.
-
-**b) Selbstsigniertes Zertifikat verteilen** (wenn die IT kein Zertifikat ausstellt):
-
-```powershell
-.\zertifikat.cmd -Exportieren
-```
-
-erzeugt `berichtsheft-zertifikat.cer`. Diese Datei per Gruppenrichtlinie (IT) oder von Hand auf jedem
-Arbeitsplatz unter **Vertrauenswürdige Stammzertifizierungsstellen** eintragen (Doppelklick →
-Zertifikat installieren → Lokaler Computer). Danach Browser neu starten. Wird das Zertifikat neu
-erzeugt, muss es erneut verteilt werden.
-
-In beiden Fällen die Seite **unter dem Namen aus dem Zertifikat** aufrufen, also z. B.
-`https://srv-ausbildung.firma.local:5016/` und nicht per IP-Adresse oder Kurzname, sofern der nicht
-ebenfalls im Zertifikat steht.
-
-Anderer Servername beim selbstsignierten Zertifikat: `F:\Program Files\Berichtsheft\data\ssl\berichtsheft-dev.p12`
-löschen und den Dienst neu starten – das Zertifikat wird mit den aktuellen Namen neu erzeugt.
+In beiden Fällen die Seite **unter dem Namen aus dem Zertifikat** aufrufen – nicht per IP-Adresse.
 
 ## 4. Windows-Anmeldung (Single Sign-on)
 
@@ -126,61 +136,44 @@ Alle anderen sehen die Seite „Kein Zugriff“ und kommen an keine andere Seite
 bearbeiten → Benutzername*), mindestens den eigenen. Den Anmeldenamen zeigt auf dem jeweiligen PC
 `whoami` (Teil hinter dem `\`), oder die Seite „Kein Zugriff“ zeigt ihn an.
 
-**Einschalten** (beim Update oder jederzeit erneut aus dem Release-Ordner):
-
-```powershell
-.\update.cmd -Sso                          # einschalten, Passwort-Anmeldung bleibt als Ausweg
-.\update.cmd -Sso -SsoDomaene FIRMA        # nur Konten der Domäne FIRMA zulassen
-.\update.cmd -Sso -OhnePasswortLogin       # nur noch Windows-Anmeldung
-.\update.cmd -SsoAus                       # wieder ausschalten
-```
-
-Bei einer Neuinstallation: `install.cmd -Sso -AusbilderBenutzer <eigener Windows-Anmeldename>`.
+**Ein-/Ausschalten:** Setup oder `Verwaltung.cmd` starten → bei *Windows-Anmeldung* auf *An* bzw. *Aus* → *Weiter*.
 
 **Voraussetzungen (ggf. mit der IT klären):**
 
 | Was | Warum / wie |
 |---|---|
 | Server ist **Mitglied der Domäne** | Nur dann kann er Windows-Anmeldungen prüfen. Der Dienst läuft als „Lokales System“ – nichts weiter einzurichten. |
-| Seite über den **vollen Servernamen** aufrufen, z. B. `https://srv-ausbildung.firma.local:5016/` | Für den Rechnernamen gibt es den Kerberos-Eintrag (SPN) automatisch. Bei einem **DNS-Alias** (z. B. `berichtsheft.firma.local`) muss die IT ihn anlegen: `setspn -S HTTP/berichtsheft.firma.local SERVERNAME` |
-| Seite ist im Browser als **Intranet** eingestuft | Edge und Chrome schicken die Windows-Anmeldung nur an Intranet-Seiten. Per Gruppenrichtlinie „Liste der Site-zu-Zonen-Zuweisungen“: `https://srv-ausbildung.firma.local` → Zone `1` (Lokales Intranet). Alternativ die Richtlinie `AuthServerAllowlist` für Edge/Chrome. Firefox: `network.negotiate-auth.trusted-uris`. |
+| Seite über den **vollen Servernamen** aufrufen, z. B. `https://scapa02e.f-i-sp.de:5016/` | Für den Rechnernamen gibt es den Kerberos-Eintrag (SPN) automatisch. Bei einem **DNS-Alias** (z. B. `berichtsheft.firma.local`) muss die IT ihn anlegen: `setspn -S HTTP/berichtsheft.firma.local SERVERNAME` |
+| Seite ist im Browser als **Intranet** eingestuft | Edge und Chrome schicken die Windows-Anmeldung nur an Intranet-Seiten. Per Gruppenrichtlinie „Liste der Site-zu-Zonen-Zuweisungen“: `https://scapa02e.f-i-sp.de` → Zone `1` (Lokales Intranet). Alternativ die Richtlinie `AuthServerAllowlist` für Edge/Chrome. Firefox: `network.negotiate-auth.trusted-uris`. |
 | Zertifikat ohne Warnung | siehe Abschnitt 3 – bei Zertifikatsfehlern schicken Browser keine Windows-Anmeldung. |
 
 **Prüfen:** Seite öffnen – man landet ohne Anmeldemaske auf der Übersicht. Erscheint stattdessen
 „Dein Windows-Konto konnte nicht automatisch ermittelt werden“, fehlt meist die Intranet-Einstufung.
 Im Log steht jede abgelehnte Anmeldung mit Konto („Windows-Anmeldung abgelehnt: …“).
 
-## 5. Neue Version einspielen
-
-1. Neues Release bauen (Schritt 1) und auf dem Server in einen **eigenen** Ordner entpacken.
-2. Dort `update.cmd` doppelklicken.
-
-Der Dienst wird angehalten, die Datenbank nach `F:\Program Files\Berichtsheft\backup\<Datum>` gesichert, Anwendung
-und Frontend ersetzt und der Dienst wieder gestartet. Datenbank, Logs, Port und Zertifikat bleiben.
-
-## 6. Betrieb
+## 5. Betrieb
 
 | Aufgabe | So geht’s |
 |---|---|
-| Dienst starten/stoppen | `services.msc` → „Berichtsheft (Azubi-Portal)“ oder `"F:\Program Files\Berichtsheft\berichtsheft-service.exe" restart` |
-| Logs | `F:\Program Files\Berichtsheft\logs\berichtsheft.log` (Anwendung) und `berichtsheft-service.*.log` (Dienst) |
-| Datensicherung | Ordner `F:\Program Files\Berichtsheft\data` sichern (bei laufendem Dienst: vorher stoppen oder `update.cmd`-Backups nutzen) |
-| Einstellungen ändern | `F:\Program Files\Berichtsheft\berichtsheft-service.xml` (Port, Zertifikat, …), danach Dienst neu starten |
-| Entfernen | `uninstall.cmd` (Daten bleiben) bzw. `uninstall.cmd -AllesLoeschen` |
+| Dienst starten/stoppen | `services.msc` → „Berichtsheft (Azubi-Portal)“ oder `"<Ordner>\berichtsheft-service.exe" restart` |
+| Logs | `<Ordner>\logs\berichtsheft.log` (Anwendung), `berichtsheft-service.*.log` (Dienst), `setup-*.log` (Setup) |
+| Datensicherung | Ordner `<Ordner>\data` sichern (Dienst vorher stoppen); jedes Update legt zusätzlich `backup\<Datum>` an |
+| Einstellungen, Speicherort, Deinstallieren | `<Ordner>\Verwaltung.cmd` oder „Apps / Programme und Features“ |
+| Speicher für Java | in `berichtsheft-service.xml` bei `-Xmx768m`, danach Dienst neu starten |
 
 Die Datenbank ist eine H2-Datei (`data\berichtsheft.mv.db`). Konfiguration und Datenbank sind nur für
 Administratoren und den Dienst (SYSTEM) lesbar, weil sie das JWT-Geheimnis bzw. Passwort-Hashes enthalten.
 
-## 7. Fehlersuche
+## 6. Fehlersuche
 
 | Problem | Lösung |
 |---|---|
+| Nach Doppelklick auf `Setup.cmd` passiert nichts | Die Administrator-Abfrage bestätigen; das Fenster erscheint nach einigen Sekunden. Sonst in einer PowerShell `powershell -ExecutionPolicy Bypass -File setup\setup.ps1` starten, um Fehlermeldungen zu sehen. |
 | Seite vom eigenen PC nicht erreichbar, auf dem Server schon | Firewall: Ist das Netzwerkprofil des Servers „Öffentlich“? Dann Regel „Berichtsheft (TCP 5016)“ in `wf.msc` auch für „Öffentlich“ freigeben. |
-| Dienst startet nicht | `logs\berichtsheft.log` ansehen. Häufig: Port belegt (`netstat -ano | findstr :5016`) → `uninstall.cmd`, dann `install.cmd -Port 9443`. |
-| „JWT_SECRET muss gesetzt sein“ | Dienst wurde ohne `install.cmd` eingerichtet – `JWT_SECRET` in `berichtsheft-service.xml` setzen. |
+| Setup meldet „Die Anwendung antwortet nicht“ | `logs\berichtsheft.log` ansehen. Häufig: Port belegt → Setup erneut ausführen, *Einstellungen ändern*, anderen Port wählen. |
 | Erster Ausbilder kann sich nicht anmelden | In `logs\berichtsheft.log` nach „Erster Ausbilder“ suchen. Passwort zurücksetzen geht über einen weiteren Ausbilder oder Neuinstallation mit leerem `data`-Ordner. |
 | Nach Update alte Oberfläche | Im Browser Strg+F5. |
-| „Die Windows-Anmeldung ist fehlgeschlagen (HTTP 400)“ nur beim Aufruf per Name, per IP klappt es | Das Kerberos-Ticket ist größer als das Header-Limit (ab Version 1.6.1: 64 KB). Bei sehr vielen AD-Gruppen in `berichtsheft-service.xml` `<env name="MAX_HEADER_SIZE" value="128KB"/>` ergänzen und Dienst neu starten. |
+| „Die Windows-Anmeldung ist fehlgeschlagen (HTTP 400)“ nur beim Aufruf per Name, per IP klappt es | Das Kerberos-Ticket ist größer als das Header-Limit (64 KB). Bei sehr vielen AD-Gruppen in `berichtsheft-service.xml` `<env name="MAX_HEADER_SIZE" value="128KB"/>` ergänzen und Dienst neu starten. |
 | „Kein Zugriff“, obwohl die Person angelegt ist | Benutzername in der Personenliste muss genau dem Windows-Anmeldenamen entsprechen, der auf der Seite angezeigt wird (ohne Domäne). |
 | Windows-Anmeldung klappt nicht, Browser fragt nach Benutzer/Passwort | Seite ist nicht als Intranet eingestuft oder per IP/Alias ohne SPN aufgerufen – siehe Abschnitt 4. |
-| Ausgesperrt (ohne Passwort-Login, eigener Benutzername falsch) | Im Release-Ordner `update.cmd -SsoAus`, mit Passwort anmelden, Benutzernamen korrigieren, danach wieder `update.cmd -Sso -OhnePasswortLogin`. |
+| Ausgesperrt (ohne Passwort-Login, eigener Benutzername falsch) | Setup bzw. `Verwaltung.cmd` → *weitere Einstellungen ändern* → Passwort-Anmeldung erlauben, mit Passwort anmelden, Benutzernamen korrigieren. |
