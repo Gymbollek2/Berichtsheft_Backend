@@ -41,15 +41,18 @@ public class BenachrichtigungService {
     private final PersonDAO personDAO;
     private final WochenberichtDAO wochenberichtDAO;
     private final CurrentUserService currentUserService;
+    private final BenachrichtigungLive live;
     private final boolean erinnerungen;
 
     public BenachrichtigungService(BenachrichtigungDAO benachrichtigungDAO, PersonDAO personDAO,
                                    WochenberichtDAO wochenberichtDAO, CurrentUserService currentUserService,
+                                   BenachrichtigungLive live,
                                    @Value("${app.erinnerungen.enabled:true}") boolean erinnerungen) {
         this.benachrichtigungDAO = benachrichtigungDAO;
         this.personDAO = personDAO;
         this.wochenberichtDAO = wochenberichtDAO;
         this.currentUserService = currentUserService;
+        this.live = live;
         this.erinnerungen = erinnerungen;
     }
 
@@ -77,12 +80,16 @@ public class BenachrichtigungService {
                 // Fremde Nachrichten werden wie nicht vorhandene behandelt
                 .orElseThrow(() -> new ResourceNotFoundException("Benachrichtigung " + id + " nicht gefunden"));
         b.setGelesen(true);
+        // Andere offene Tabs derselben Person ziehen nach
+        live.geaendert(b.getEmpfaenger().getId());
         return BenachrichtigungDTO.from(b);
     }
 
     @Transactional
     public void markiereAlleGelesen() {
-        benachrichtigungDAO.markiereAlleGelesen(currentUserService.getPerson());
+        Person ich = currentUserService.getPerson();
+        benachrichtigungDAO.markiereAlleGelesen(ich);
+        live.geaendert(ich.getId());
     }
 
     // ------------------------------------------------------------------ Verschicken
@@ -90,6 +97,7 @@ public class BenachrichtigungService {
     @Transactional
     public void senden(Person empfaenger, BenachrichtigungTypEnum typ, String titel, String text, String link, String bezug) {
         benachrichtigungDAO.save(new Benachrichtigung(empfaenger, typ, titel, text, link, bezug));
+        live.geaendert(empfaenger.getId());
     }
 
     /** An alle Ausbilder – ausser an den, der die Aktion selbst ausgeloest hat. */
@@ -107,11 +115,13 @@ public class BenachrichtigungService {
     @Transactional
     public void erledigt(String bezug, BenachrichtigungTypEnum typ) {
         benachrichtigungDAO.markiereErledigt(bezug, typ);
+        live.alleGeaendert();
     }
 
     @Transactional
     public void erledigt(Person empfaenger, String bezug, BenachrichtigungTypEnum typ) {
         benachrichtigungDAO.markiereErledigt(empfaenger, bezug, typ);
+        live.geaendert(empfaenger.getId());
     }
 
     // ------------------------------------------------------------------ Erinnerungen

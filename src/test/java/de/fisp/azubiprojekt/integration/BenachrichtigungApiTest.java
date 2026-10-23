@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -248,6 +249,37 @@ class BenachrichtigungApiTest {
         // "Alle gelesen"
         mvc.perform(post("/v1/benachrichtigung/gelesen").header("Authorization", trainer)).andExpect(status().isOk());
         assertThat(ungelesen(trainer)).isZero();
+    }
+
+    @Test
+    void liveVerbindungMeldetNeueNachrichtenSofort() throws Exception {
+        String azubi = login("azubi2", "azubi123");
+        String trainer = login("ausbilder", "ausbilder123");
+        mvc.perform(get("/v1/benachrichtigung/live")).andExpect(status().isUnauthorized());
+
+        MvcResult ausbilderLive = mvc.perform(get("/v1/benachrichtigung/live").header("Authorization", trainer))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+        // Ein anderer Azubi, den die Abgabe nichts angeht
+        MvcResult andererLive = mvc.perform(get("/v1/benachrichtigung/live")
+                        .header("Authorization", login("azubi", "azubi123")))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+        assertThat(ausbilderLive.getResponse().getContentType()).startsWith(MediaType.TEXT_EVENT_STREAM_VALUE);
+        assertThat(ausbilderLive.getResponse().getContentAsString()).contains("event:verbunden");
+
+        // Abgabe -> der Ausbilder bekommt sofort ein Ereignis, Unbeteiligte nicht
+        Integer wochenId = wocheAbgeben(azubi);
+        assertThat(ausbilderLive.getResponse().getContentAsString()).contains("event:benachrichtigung");
+        assertThat(andererLive.getResponse().getContentAsString()).doesNotContain("event:benachrichtigung");
+
+        // Abzeichnen -> der Azubi bekommt sofort ein Ereignis
+        MvcResult azubiLive = mvc.perform(get("/v1/benachrichtigung/live").header("Authorization", azubi))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+        mvc.perform(post("/v1/berichtsheft/woche/" + wochenId + "/abzeichnen").header("Authorization", trainer))
+                .andExpect(status().isOk());
+        assertThat(azubiLive.getResponse().getContentAsString()).contains("event:benachrichtigung");
     }
 
     @Test

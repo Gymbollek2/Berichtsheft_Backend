@@ -2,6 +2,7 @@ package de.fisp.azubiprojekt.config;
 
 import de.fisp.azubiprojekt.service.JwtService;
 import de.fisp.azubiprojekt.service.UserService;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -53,6 +54,8 @@ public class SecurityConfig {
                 .headers(h -> h.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)) // H2-Konsole
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Fortsetzung bereits gepruefter Anfragen (Live-Verbindung der Glocke, Fehlerseite)
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/v1/passport/login", "/v1/passport/optionen", "/v1/passport/sso",
                                 "/h2-console/**", "/error").permitAll()

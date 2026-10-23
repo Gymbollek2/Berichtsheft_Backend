@@ -7,6 +7,9 @@
   abgegeben“), abgenommen und Korrekturbedarf (an den Azubi, mit Kommentar), Lernziel erreicht, Willkommen für
   neue Zugänge. Täglich um 7 Uhr und nach dem Start eine Erinnerung an nicht abgegebene Berichtshefte der Vorwoche
   (je Woche höchstens eine). Erledigte Anlässe gelten automatisch als gelesen.
+- **Live-Benachrichtigungen** (`GET /v1/benachrichtigung/live`, Server-Sent Events): Jede neue, gelesene oder
+  erledigte Benachrichtigung wird den offenen Browser-Tabs der betroffenen Person sofort gemeldet. Lebenszeichen
+  alle 25 Sekunden, Verbindung nach 30 Minuten neu.
 - **Abgenommene Woche wieder öffnen** (`POST /v1/berichtsheft/woche/{id}/wieder-oeffnen`, Ausbilder, Grund
   optional): Die Woche steht danach auf „Zur Überarbeitung“, der Azubi wird benachrichtigt.
 - Start-Migration `BenachrichtigungTypMigration`: stellt `benachrichtigung.typ` von H2-ENUM auf Text um, damit

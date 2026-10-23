@@ -3,8 +3,12 @@ package de.fisp.azubiprojekt.controller;
 import de.fisp.azubiprojekt.dto.response.BenachrichtigungDTO;
 import de.fisp.azubiprojekt.dto.response.BenachrichtigungenResponseDTO;
 import de.fisp.azubiprojekt.dto.response.MessageResponseDTO;
+import de.fisp.azubiprojekt.service.BenachrichtigungLive;
 import de.fisp.azubiprojekt.service.BenachrichtigungService;
+import de.fisp.azubiprojekt.service.CurrentUserService;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Map;
 
@@ -14,9 +18,14 @@ import java.util.Map;
 public class BenachrichtigungController {
 
     private final BenachrichtigungService benachrichtigungService;
+    private final BenachrichtigungLive live;
+    private final CurrentUserService currentUserService;
 
-    public BenachrichtigungController(BenachrichtigungService benachrichtigungService) {
+    public BenachrichtigungController(BenachrichtigungService benachrichtigungService, BenachrichtigungLive live,
+                                      CurrentUserService currentUserService) {
         this.benachrichtigungService = benachrichtigungService;
+        this.live = live;
+        this.currentUserService = currentUserService;
     }
 
     /** Neueste Nachrichten und Anzahl der ungelesenen. */
@@ -29,6 +38,12 @@ public class BenachrichtigungController {
     @GetMapping("/anzahl")
     public Map<String, Long> anzahl() {
         return Map.of("ungelesen", benachrichtigungService.getAnzahlUngelesen());
+    }
+
+    /** Offene Verbindung (Server-Sent Events): meldet jede Aenderung sofort, damit die Glocke direkt aktualisiert. */
+    @GetMapping(path = "/live", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter live() {
+        return live.verbinden(currentUserService.getPersonId());
     }
 
     @PostMapping("/{id}/gelesen")
