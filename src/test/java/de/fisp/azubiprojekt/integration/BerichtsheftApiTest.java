@@ -31,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.url=jdbc:h2:mem:berichtsheft-test;DB_CLOSE_DELAY=-1",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "server.ssl.enabled=false",
+        "app.mail.enabled=false",
         "app.demo-data.enabled=true",
         // Die Tests rechnen mit dem kleinen Demo-Lernzielplan; der Rahmenplan wird in RahmenplanImportTest geprueft
         "app.rahmenplan-import.enabled=false"

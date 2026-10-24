@@ -32,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.url=jdbc:h2:mem:berichtsheft-sso-test;DB_CLOSE_DELAY=-1",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "server.ssl.enabled=false",
+        "app.mail.enabled=false",
         "app.demo-data.enabled=true",
         "app.rahmenplan-import.enabled=false",
         "app.sso.enabled=true",

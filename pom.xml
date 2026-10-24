@@ -67,6 +67,12 @@
             <version>${waffle.version}</version>
         </dependency>
 
+        <!-- E-Mail-Versand per SMTP -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- Datenbank -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -49,10 +49,12 @@ public class BerichtsheftService {
     private final CurrentUserService currentUserService;
     private final PersonLernzielService personLernzielService;
     private final BenachrichtigungService benachrichtigungService;
+    private final EmailBenachrichtigungService emailBenachrichtigungService;
 
     public BerichtsheftService(BerichtsheftDAO berichtsheftDAO, WochenberichtDAO wochenberichtDAO, LernzielDAO lernzielDAO,
                                PersonLernzielDAO personLernzielDAO, CurrentUserService currentUserService,
-                               PersonLernzielService personLernzielService, BenachrichtigungService benachrichtigungService) {
+                               PersonLernzielService personLernzielService, BenachrichtigungService benachrichtigungService,
+                               EmailBenachrichtigungService emailBenachrichtigungService) {
         this.berichtsheftDAO = berichtsheftDAO;
         this.personLernzielDAO = personLernzielDAO;
         this.wochenberichtDAO = wochenberichtDAO;
@@ -60,6 +62,7 @@ public class BerichtsheftService {
         this.currentUserService = currentUserService;
         this.personLernzielService = personLernzielService;
         this.benachrichtigungService = benachrichtigungService;
+        this.emailBenachrichtigungService = emailBenachrichtigungService;
     }
 
     // ------------------------------------------------------------------ Lesen
@@ -257,6 +260,7 @@ public class BerichtsheftService {
                         + (bericht.getKommentar() == null ? "" : " Kommentar: „" + bericht.getKommentar() + "“"),
                 eigeneWoche(bericht), bezug(bericht));
         benachrichtigungService.erledigt(bezug(bericht), BenachrichtigungTypEnum.BERICHT_ABGEGEBEN);
+        emailBenachrichtigungService.berichtAbgenommen(bericht);
         return buildWoche(bericht.getPerson(), bericht.getWeekStart());
     }
 
@@ -278,6 +282,7 @@ public class BerichtsheftService {
                         + " zur Überarbeitung zurückgegeben: „" + bericht.getKommentar() + "“",
                 eigeneWoche(bericht), bezug(bericht));
         benachrichtigungService.erledigt(bezug(bericht), BenachrichtigungTypEnum.BERICHT_ABGEGEBEN);
+        emailBenachrichtigungService.berichtZurueckgegeben(bericht);
         return buildWoche(bericht.getPerson(), bericht.getWeekStart());
     }
 
