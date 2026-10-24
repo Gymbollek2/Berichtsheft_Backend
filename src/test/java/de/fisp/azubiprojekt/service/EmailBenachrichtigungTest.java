@@ -49,6 +49,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         // Erinnerungen werden im Test gezielt aufgerufen, nicht beim Start
         "app.mail.erinnerung.enabled=false",
         "app.mail.portal-url=https://portal.test/",
+        "app.mail.absender=absender@portal.test",
+        "app.mail.versandart=smtp",
         "app.mail.empfaenger.umleiten-an="
 })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
@@ -79,7 +81,7 @@ class EmailBenachrichtigungTest {
         pruefen("abzeichnen", "{\"kommentar\":\"Sehr sauber dokumentiert\"}");
 
         MimeMessage mail = gesendet(1).getFirst();
-        assertThat(((InternetAddress) mail.getFrom()[0]).getAddress()).isEqualTo("Ausbildung-Kai@Cimbollek.de");
+        assertThat(((InternetAddress) mail.getFrom()[0]).getAddress()).isEqualTo("absender@portal.test");
         assertThat(((InternetAddress) mail.getAllRecipients()[0]).getAddress()).isEqualTo("Max.Mustermann@Azubi.de");
         assertThat(mail.getSubject()).startsWith("[Azubi Portal] Dein Berichtsheft für KW").endsWith("wurde abgenommen");
         String html = inhalt(mail, "text/html");

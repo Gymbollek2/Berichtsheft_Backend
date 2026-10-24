@@ -177,3 +177,80 @@ Administratoren und den Dienst (SYSTEM) lesbar, weil sie das JWT-Geheimnis bzw. 
 | „Kein Zugriff“, obwohl die Person angelegt ist | Benutzername in der Personenliste muss genau dem Windows-Anmeldenamen entsprechen, der auf der Seite angezeigt wird (ohne Domäne). |
 | Windows-Anmeldung klappt nicht, Browser fragt nach Benutzer/Passwort | Seite ist nicht als Intranet eingestuft oder per IP/Alias ohne SPN aufgerufen – siehe Abschnitt 4. |
 | Ausgesperrt (ohne Passwort-Login, eigener Benutzername falsch) | Setup bzw. `Verwaltung.cmd` → *weitere Einstellungen ändern* → Passwort-Anmeldung erlauben, mit Passwort anmelden, Benutzernamen korrigieren. |
+
+## 7. E-Mail-Versand über Microsoft 365 (Microsoft Graph)
+
+Das Portal verschickt E-Mails (Abnahme/Rückgabe, Erinnerungen) entweder per **SMTP** (Standard, lokal an Mailhog)
+oder über **Microsoft Graph**. Bei Graph meldet sich die Anwendung selbst per OAuth2 an – ohne Benutzerpasswort.
+Umgeschaltet wird mit `MAIL_VERSANDART` (`smtp` oder `graph`).
+
+### 7.1 Postfach anlegen (Exchange Admin Center)
+1. <https://admin.exchange.microsoft.com> → *Empfänger* → *Postfächer* → **Freigegebenes Postfach hinzufügen**
+   (braucht keine Lizenz), z. B. `Ausbildung-Fellbach@AzubiPortal.de`, Anzeigename z. B. „Azubi Portal“.
+   Der Anzeigename ist der Absendername in den Mails.
+2. Die Domain der Adresse muss im Mandanten als Domain eingerichtet sein.
+
+### 7.2 App registrieren (Microsoft Entra Admin Center)
+1. <https://entra.microsoft.com> → *Identität* → *Anwendungen* → **App-Registrierungen** → *Neue Registrierung*:
+   Name „Berichtsheft E-Mail“, *Nur Konten in diesem Organisationsverzeichnis*, **keine** Umleitungs-URI.
+2. Auf der Übersicht notieren: **Anwendungs-ID (Client)** → `MAIL_GRAPH_CLIENT_ID`,
+   **Verzeichnis-ID (Mandant)** → `MAIL_GRAPH_TENANT_ID`.
+3. *Zertifikate & Geheimnisse* → *Neuer geheimer Clientschlüssel* → Ablauf wählen (max. 24 Monate).
+   Den **Wert** sofort kopieren (wird nur einmal angezeigt) → `MAIL_GRAPH_CLIENT_SECRET`.
+   Ablaufdatum in den Kalender eintragen – danach schlägt der Versand fehl (siehe Fehlersuche).
+
+### 7.3 Senderecht nur für dieses eine Postfach erteilen (Exchange Online PowerShell)
+`Mail.Send` als Anwendungsberechtigung in Entra würde Senden **aus jedem Postfach** der Firma erlauben.
+Deshalb wird das Recht über *RBAC für Anwendungen* in Exchange Online auf das Portal-Postfach begrenzt
+(in Entra unter *API-Berechtigungen* also **kein** `Mail.Send` mit Administratorzustimmung eintragen):
+
+```powershell
+Install-Module ExchangeOnlineManagement   # einmalig
+Connect-ExchangeOnline
+
+# Objekt-ID findet man in Entra unter "Unternehmensanwendungen" → "Berichtsheft E-Mail" (NICHT die der App-Registrierung)
+New-ServicePrincipal -AppId <Client-ID> -ObjectId <Objekt-ID der Unternehmensanwendung> -DisplayName "Berichtsheft E-Mail"
+
+New-ManagementScope -Name "Berichtsheft-Postfach" `
+    -RecipientRestrictionFilter "PrimarySmtpAddress -eq 'Ausbildung-Fellbach@AzubiPortal.de'"
+
+New-ManagementRoleAssignment -App <Client-ID> -Role "Application Mail.Send" -CustomResourceScope "Berichtsheft-Postfach"
+
+# Prüfen: InScope muss True sein
+Test-ServicePrincipalAuthorization -Identity <Client-ID> -Resource Ausbildung-Fellbach@AzubiPortal.de
+```
+
+Neue Rechte können bis zu ca. 2 Stunden brauchen, bis sie greifen.
+
+### 7.4 Server einstellen
+In `berichtsheft-service.xml` ergänzen und den Dienst neu starten:
+
+```xml
+<env name="MAIL_VERSANDART" value="graph"/>
+<env name="MAIL_GRAPH_TENANT_ID" value="<Verzeichnis-ID>"/>
+<env name="MAIL_GRAPH_CLIENT_ID" value="<Anwendungs-ID>"/>
+<env name="MAIL_GRAPH_CLIENT_SECRET" value="<Wert des Clientschlüssels>"/>
+<env name="MAIL_ABSENDER" value="Ausbildung-Fellbach@AzubiPortal.de"/>
+<env name="MAIL_MUSTER_AZUBI" value="{vorname}.{nachname}@firma.de"/>
+<env name="MAIL_MUSTER_AUSBILDER" value="{vorname}.{nachname}@firma.de"/>
+<env name="MAIL_PORTAL_URL" value="https://<servername>:5016"/>
+<!-- Zum Ausprobieren erst alles an eine Adresse umleiten, danach Zeile entfernen -->
+<env name="MAIL_UMLEITEN_AN" value="admin@firma.de"/>
+```
+
+Der Server braucht ausgehend HTTPS (Port 443) zu `login.microsoftonline.com` und `graph.microsoft.com`.
+Muss ein Proxy benutzt werden, in den Java-Argumenten `-Dhttps.proxyHost=… -Dhttps.proxyPort=…` ergänzen.
+
+**Prüfen:** Im Log steht nach dem Start (Erinnerungen) bzw. nach einer Abnahme
+„E-Mail … per Microsoft Graph verschickt“. Die Mail liegt außerdem unter *Gesendete Elemente* des Postfachs.
+
+### 7.5 Fehlersuche E-Mail
+
+| Meldung im Log | Ursache / Lösung |
+|---|---|
+| Dienst startet nicht: „… es fehlt: app.mail.graph.…“ | Umgebungsvariablen aus 7.4 fehlen oder sind falsch geschrieben. |
+| „Anmeldung bei Microsoft Entra ID fehlgeschlagen … AADSTS7000215“ | Falscher oder abgelaufener Clientschlüssel – den **Wert** (nicht die geheime ID) eintragen bzw. neuen Schlüssel erstellen. |
+| „… AADSTS700016“ / „AADSTS90002“ | Client-ID bzw. Mandanten-ID falsch. |
+| „Microsoft Graph hat die Mail abgelehnt (HTTP 403): Access is denied“ | Senderecht fehlt oder ist noch nicht aktiv – 7.3 prüfen (`Test-ServicePrincipalAuthorization`), ggf. bis zu 2 h warten. |
+| „… (HTTP 404) … ErrorInvalidUser“ / „MailboxNotEnabledForRESTAPI“ | Postfach `MAIL_ABSENDER` existiert nicht in Exchange Online. |
+| Verbindungsfehler / Zeitüberschreitung | Firewall oder Proxy (7.4). |

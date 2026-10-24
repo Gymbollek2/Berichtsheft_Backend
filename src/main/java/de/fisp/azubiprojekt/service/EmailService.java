@@ -2,16 +2,10 @@ package de.fisp.azubiprojekt.service;
 
 import de.fisp.azubiprojekt.config.EmailEigenschaften;
 import de.fisp.azubiprojekt.entity.Person;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.InternetAddress;
-import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.mail.MailException;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -27,8 +21,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Verschickt E-Mails per SMTP (Server: {@code spring.mail.*}, Absender und Empfaenger: {@code app.mail.*}).
- * Jede Mail geht als HTML mit Button ins Portal und zusaetzlich als reiner Text raus.
+ * Bereitet E-Mails auf (HTML mit Button ins Portal und Textfassung) und verschickt sie ueber den eingestellten
+ * {@link EmailVersand} – SMTP oder Microsoft Graph, siehe {@code app.mail.versandart}.
  * Fehler beim Versand werden nur protokolliert – sie duerfen keine fachliche Aktion scheitern lassen.
  */
 @Service
@@ -38,18 +32,14 @@ public class EmailService {
     private static final Pattern FETT = Pattern.compile("\\*\\*(.+?)\\*\\*");
     private static final String SCHRIFT = "font-family:'IBM Plex Sans','Segoe UI',Arial,sans-serif;";
 
-    /** Fertig aufbereitete Mail – enthaelt nur noch Text, damit sie ausserhalb der Transaktion verschickt werden kann. */
-    record VorbereiteteEmail(String an, String anName, String betreff, String text, String html) {
-    }
-
-    private final JavaMailSender mailSender;
+    private final EmailVersand versand;
     private final EmailEigenschaften eigenschaften;
     private final Executor executor;
     private final String vorlage;
 
-    public EmailService(JavaMailSender mailSender, EmailEigenschaften eigenschaften,
+    public EmailService(EmailVersand versand, EmailEigenschaften eigenschaften,
                         @Qualifier("applicationTaskExecutor") Executor executor) {
-        this.mailSender = mailSender;
+        this.versand = versand;
         this.eigenschaften = eigenschaften;
         this.executor = executor;
         this.vorlage = ladeVorlage();
@@ -125,8 +115,10 @@ public class EmailService {
     VorbereiteteEmail vorbereiten(Person empfaenger, EmailInhalt inhalt) {
         String praefix = eigenschaften.betreffPraefix();
         String betreff = (praefix == null || praefix.isBlank() ? "" : praefix.trim() + " ") + inhalt.getBetreff();
-        return new VorbereiteteEmail(adresse(empfaenger), empfaenger.getFullName(), betreff,
+        VorbereiteteEmail email = new VorbereiteteEmail(adresse(empfaenger), empfaenger.getFullName(), null, betreff,
                 alsText(inhalt), alsHtml(inhalt, betreff));
+        String umleiten = eigenschaften.empfaenger().umleitenAn();
+        return umleiten == null || umleiten.isBlank() ? email : email.umgeleitetAn(umleiten.trim());
     }
 
     private String alsHtml(EmailInhalt inhalt, String betreff) {
@@ -238,29 +230,15 @@ public class EmailService {
     // ------------------------------------------------------------------ Versand
 
     private boolean versenden(VorbereiteteEmail email) {
-        String umleiten = eigenschaften.empfaenger().umleitenAn();
-        boolean umgeleitet = umleiten != null && !umleiten.isBlank();
-        String an = umgeleitet ? umleiten.trim() : email.an();
         try {
-            MimeMessage nachricht = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(nachricht, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
-                    StandardCharsets.UTF_8.name());
-            helper.setFrom(new InternetAddress(eigenschaften.absender(), eigenschaften.absenderName(), StandardCharsets.UTF_8.name()));
-            helper.setTo(new InternetAddress(an, umgeleitet ? null : email.anName(), StandardCharsets.UTF_8.name()));
-            if (eigenschaften.antwortAn() != null && !eigenschaften.antwortAn().isBlank()) {
-                helper.setReplyTo(eigenschaften.antwortAn().trim());
-            }
-            if (umgeleitet) {
-                nachricht.setHeader("X-Original-To", email.an());
-            }
-            helper.setSubject(email.betreff());
-            helper.setText(email.text(), email.html());
-            mailSender.send(nachricht);
-            log.info("E-Mail \"{}\" an {} verschickt{}", email.betreff(), an,
-                    umgeleitet ? " (umgeleitet, eigentlich an " + email.an() + ")" : "");
+            versand.senden(email);
+            log.info("E-Mail \"{}\" an {} per {} verschickt{}", email.betreff(), email.an(), versand.name(),
+                    email.istUmgeleitet() ? " (umgeleitet, eigentlich an " + email.urspruenglichAn() + ")" : "");
             return true;
-        } catch (MailException | MessagingException | IOException e) {
-            log.warn("E-Mail \"{}\" an {} konnte nicht verschickt werden: {}", email.betreff(), an, e.getMessage());
+        } catch (Exception e) {
+            // Bewusst alles abfangen: Ein Versandfehler darf keine fachliche Aktion scheitern lassen
+            log.warn("E-Mail \"{}\" an {} konnte per {} nicht verschickt werden: {}", email.betreff(), email.an(),
+                    versand.name(), e.getMessage());
             return false;
         }
     }
