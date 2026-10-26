@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 /**
  * Fachliche E-Mails rund ums Berichtsheft:
  * <ul>
+ *     <li>an die Person, wenn ihr Account angelegt wurde,</li>
  *     <li>an den Azubi, wenn eine Woche abgenommen oder zur Ueberarbeitung zurueckgegeben wurde,</li>
  *     <li>an den Azubi, wenn eine Woche seit ueber einer Woche faellig, aber nicht abgegeben ist,</li>
  *     <li>an die Ausbilder, wenn eine abgegebene Woche seit ueber einer Woche nicht geprueft wurde.</li>
@@ -93,6 +94,30 @@ public class EmailBenachrichtigungService {
                         + "Bei Fragen wende dich einfach an " + bericht.getGeprueftVon() + ".")
                 .button("Berichtsheft überarbeiten", "/berichtsheft?datum=" + ws);
         emailService.sendenNachAbschluss(azubi, inhalt);
+    }
+
+    // ------------------------------------------------------------------ Neuer Account
+
+    /**
+     * Teilt der Person mit, dass ihr Zugang angelegt wurde. Das Startpasswort steht bewusst nicht in der Mail.
+     *
+     * @param angelegtVon            Name der Person, die den Account angelegt hat
+     * @param benutzernameAngegeben  false, wenn der Benutzername automatisch erzeugt wurde – dann geht die Mail an
+     *                               Vorname.Nachname@…, sonst an benutzername@…
+     */
+    public void accountErstellt(Person person, String angelegtVon, boolean benutzernameAngegeben) {
+        EmailInhalt inhalt = EmailInhalt.mitBetreff("Dein Zugang zum Azubi Portal wurde erstellt")
+                .ueberschrift("Willkommen im Azubi Portal")
+                .status("Account erstellt", EmailInhalt.Ton.ERFOLG)
+                .absatz("Hallo " + person.getFirstName() + ",")
+                .absatz("**" + angelegtVon + "** hat für dich einen Zugang zum Azubi Portal angelegt. "
+                        + "Ab sofort kannst du dich mit folgenden Daten anmelden:")
+                .liste(List.of("Benutzername: **" + person.getUsers().getUsername() + "**",
+                        "Rolle: **" + person.getRole().getLabel() + "**"))
+                .absatz("Dein Startpasswort bekommst du von " + angelegtVon + ". Bitte ändere es nach der ersten "
+                        + "Anmeldung unter „Mein Profil“.")
+                .button("Zum Azubi Portal", "/profil");
+        emailService.sendenNachAbschluss(person, emailService.kontoAdresse(person, benutzernameAngegeben), inhalt);
     }
 
     // ------------------------------------------------------------------ Erinnerungen

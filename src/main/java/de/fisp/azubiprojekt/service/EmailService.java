@@ -58,7 +58,7 @@ public class EmailService {
         if (!isAktiv()) {
             return false;
         }
-        return versenden(vorbereiten(empfaenger, inhalt));
+        return versenden(vorbereiten(empfaenger, adresse(empfaenger), inhalt));
     }
 
     /**
@@ -69,7 +69,18 @@ public class EmailService {
         if (!isAktiv()) {
             return;
         }
-        VorbereiteteEmail email = vorbereiten(empfaenger, inhalt);
+        sendenNachAbschluss(vorbereiten(empfaenger, adresse(empfaenger), inhalt));
+    }
+
+    /** Wie {@link #sendenNachAbschluss(Person, EmailInhalt)}, aber an eine fest vorgegebene Adresse statt nach Muster. */
+    public void sendenNachAbschluss(Person empfaenger, String adresse, EmailInhalt inhalt) {
+        if (!isAktiv()) {
+            return;
+        }
+        sendenNachAbschluss(vorbereiten(empfaenger, adresse, inhalt));
+    }
+
+    private void sendenNachAbschluss(VorbereiteteEmail email) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
@@ -92,10 +103,33 @@ public class EmailService {
         // Windows-Konten stehen evtl. als DOMAENE\benutzer in der Personenliste
         benutzername = benutzername.substring(benutzername.lastIndexOf('\\') + 1);
         String adresse = muster
-                .replace("{vorname}", adressteil(person.getFirstName()))
+                .replace("{vorname}", vornamen(person))
                 .replace("{nachname}", adressteil(person.getLastName()))
                 .replace("{benutzername}", adressteil(benutzername));
         return e.kleinschreibung() ? adresse.toLowerCase(Locale.ROOT) : adresse;
+    }
+
+    /**
+     * Adresse fuer die Mail "Account erstellt": benutzername@kontoDomain, wurde beim Anlegen kein Benutzername
+     * angegeben, Vorname.Nachname@kontoDomain.
+     */
+    String kontoAdresse(Person person, boolean benutzernameAngegeben) {
+        EmailEigenschaften.Empfaenger e = eigenschaften.empfaenger();
+        String lokal;
+        if (benutzernameAngegeben) {
+            String benutzername = person.getUsers().getUsername();
+            lokal = adressteil(benutzername.substring(benutzername.lastIndexOf('\\') + 1));
+        } else {
+            lokal = vornamen(person) + "." + adressteil(person.getLastName());
+        }
+        String adresse = lokal + "@" + e.kontoDomain().trim();
+        return e.kleinschreibung() ? adresse.toLowerCase(Locale.ROOT) : adresse;
+    }
+
+    /** Vorname, mit Zweitnamen per Bindestrich verbunden: "Max" + "Peter" -> "Max-Peter". */
+    static String vornamen(Person person) {
+        String zweitname = adressteil(person.getMiddleName());
+        return adressteil(person.getFirstName()) + (zweitname.isEmpty() ? "" : "-" + zweitname);
     }
 
     /** Umlaute umschreiben, Akzente entfernen, Leerzeichen zu Bindestrichen: "Jürgen Weiß" -> "Juergen-Weiss". */
@@ -112,10 +146,10 @@ public class EmailService {
 
     // ------------------------------------------------------------------ Aufbereiten
 
-    VorbereiteteEmail vorbereiten(Person empfaenger, EmailInhalt inhalt) {
+    VorbereiteteEmail vorbereiten(Person empfaenger, String adresse, EmailInhalt inhalt) {
         String praefix = eigenschaften.betreffPraefix();
         String betreff = (praefix == null || praefix.isBlank() ? "" : praefix.trim() + " ") + inhalt.getBetreff();
-        VorbereiteteEmail email = new VorbereiteteEmail(adresse(empfaenger), empfaenger.getFullName(), null, betreff,
+        VorbereiteteEmail email = new VorbereiteteEmail(adresse, empfaenger.getFullName(), null, betreff,
                 alsText(inhalt), alsHtml(inhalt, betreff));
         String umleiten = eigenschaften.empfaenger().umleitenAn();
         return umleiten == null || umleiten.isBlank() ? email : email.umgeleitetAn(umleiten.trim());

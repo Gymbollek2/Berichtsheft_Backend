@@ -2,7 +2,8 @@ package de.fisp.azubiprojekt.service;
 
 /**
  * Versandweg fuer E-Mails, gewaehlt ueber {@code app.mail.versandart}:
- * {@link SmtpEmailVersand} (smtp) oder {@link GraphEmailVersand} (graph, Microsoft 365).
+ * {@link SmtpEmailVersand} (smtp), {@link GraphEmailVersand} (graph, Microsoft 365) oder
+ * {@link ExchangeEmailVersand} (exchange, eigener Exchange-Server per SMTP + IMAP).
  */
 public interface EmailVersand {
 

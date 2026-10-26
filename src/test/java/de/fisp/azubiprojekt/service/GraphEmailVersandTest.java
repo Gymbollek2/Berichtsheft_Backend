@@ -120,9 +120,10 @@ class GraphEmailVersandTest {
     private static EmailEigenschaften eigenschaften(String secret, String postfach) {
         return new EmailEigenschaften(true, EmailEigenschaften.Versandart.GRAPH, "ausbildung@firma.de", "Azubi Portal",
                 "", "", "https://portal.test",
-                new EmailEigenschaften.Empfaenger("{vorname}.{nachname}@firma.de", "{vorname}.{nachname}@firma.de", false, ""),
+                new EmailEigenschaften.Empfaenger("{vorname}.{nachname}@firma.de", "{vorname}.{nachname}@firma.de", false, "", "firma.de"),
                 new EmailEigenschaften.Erinnerung(true, 7, 7, 8),
                 new EmailEigenschaften.Graph("mandant-1", "client-1", secret, postfach, true,
-                        "https://login.test/", "https://graph.test/v1.0", "https://graph.microsoft.com/.default", 5000));
+                        "https://login.test/", "https://graph.test/v1.0", "https://graph.microsoft.com/.default", 5000),
+                null);
     }
 }

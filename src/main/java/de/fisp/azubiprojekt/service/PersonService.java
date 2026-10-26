@@ -6,6 +6,7 @@ import de.fisp.azubiprojekt.dao.UserDAO;
 import de.fisp.azubiprojekt.dto.request.PasswordResetRequestDTO;
 import de.fisp.azubiprojekt.dto.request.PersonCreateRequestDTO;
 import de.fisp.azubiprojekt.dto.request.PersonUpdateRequestDTO;
+import de.fisp.azubiprojekt.dto.response.OrganigrammResponseDTO;
 import de.fisp.azubiprojekt.dto.response.PersonResponseDTO;
 import de.fisp.azubiprojekt.entity.Person;
 import de.fisp.azubiprojekt.entity.Users;
@@ -20,9 +21,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 /** Verwaltung von Personen und deren Login-Konten. */
 @Service
@@ -35,12 +40,15 @@ public class PersonService {
     private final PersonLernzielService personLernzielService;
     private final LernzielDAO lernzielDAO;
     private final BenachrichtigungService benachrichtigungService;
+    private final EmailBenachrichtigungService emailBenachrichtigungService;
 
     public PersonService(PersonDAO personDAO, UserDAO userDAO, PasswordEncoder passwordEncoder,
                          CurrentUserService currentUserService, PersonLernzielService personLernzielService,
-                         LernzielDAO lernzielDAO, BenachrichtigungService benachrichtigungService) {
+                         LernzielDAO lernzielDAO, BenachrichtigungService benachrichtigungService,
+                         EmailBenachrichtigungService emailBenachrichtigungService) {
         this.lernzielDAO = lernzielDAO;
         this.benachrichtigungService = benachrichtigungService;
+        this.emailBenachrichtigungService = emailBenachrichtigungService;
         this.personDAO = personDAO;
         this.userDAO = userDAO;
         this.passwordEncoder = passwordEncoder;
@@ -63,6 +71,31 @@ public class PersonService {
                 .toList();
     }
 
+    /**
+     * Organigramm fuer alle: Ausbilder und die Lernenden nach ihrem aktuellen Ausbildungsjahr. Das Jahr wird bei
+     * jedem Abruf aus dem Ausbildungsbeginn berechnet – wechselt jemand das Lehrjahr, rueckt er automatisch auf.
+     * Wer seine Ausbildung erst noch beginnt, erscheint ab dem Tag des Ausbildungsbeginns.
+     */
+    @Transactional(readOnly = true)
+    public OrganigrammResponseDTO getOrganigramm() {
+        LocalDate heute = LocalDate.now();
+        List<Person> alle = personDAO.findAllByOrderByLastNameAscFirstNameAsc();
+        List<OrganigrammResponseDTO.Mitglied> ausbilder = alle.stream()
+                .filter(p -> p.getRole() == RoleEnum.ROLE_TRAINER)
+                .map(OrganigrammResponseDTO.Mitglied::from)
+                .toList();
+        Map<Integer, List<OrganigrammResponseDTO.Mitglied>> nachJahr = alle.stream()
+                .filter(p -> p.getRole().isLearner())
+                .filter(p -> p.getDateOfTrainingStart() == null || !p.getDateOfTrainingStart().isAfter(heute))
+                .collect(Collectors.groupingBy(p -> Math.max(1, p.getYearOfTraining()),
+                        () -> new TreeMap<Integer, List<OrganigrammResponseDTO.Mitglied>>(Comparator.reverseOrder()),
+                        Collectors.mapping(OrganigrammResponseDTO.Mitglied::from, Collectors.toList())));
+        List<OrganigrammResponseDTO.Jahrgang> jahrgaenge = nachJahr.entrySet().stream()
+                .map(e -> new OrganigrammResponseDTO.Jahrgang(e.getKey(), e.getValue()))
+                .toList();
+        return new OrganigrammResponseDTO(ausbilder, jahrgaenge);
+    }
+
     @Transactional(readOnly = true)
     public PersonResponseDTO getById(Long id) {
         return PersonResponseDTO.from(currentUserService.resolveAccessiblePerson(id));
@@ -75,9 +108,11 @@ public class PersonService {
 
         Person person = new Person(request.firstName().trim(), request.lastName().trim(), request.role(),
                 0, null, request.dateOfBirth());
+        person.setMiddleName(blankToNull(request.middleName()));
         applyRoleSpecificData(person, request.beruf(), request.dateOfTrainingStart());
 
-        String username = request.username() == null || request.username().isBlank()
+        boolean usernameGiven = request.username() != null && !request.username().isBlank();
+        String username = !usernameGiven
                 ? generateUsername(person.getFirstName(), person.getLastName())
                 : request.username().trim().toLowerCase(Locale.ROOT);
         if (userDAO.existsByUsernameIgnoreCase(username)) {
@@ -92,10 +127,12 @@ public class PersonService {
             personLernzielService.assignAllLernziele(saved);
             lernzielRecompute(saved);
         }
+        String createdBy = currentUserService.getPerson().getFullName();
         benachrichtigungService.senden(saved, BenachrichtigungTypEnum.WILLKOMMEN, "Willkommen im Azubi-Portal",
-                currentUserService.getPerson().getFullName() + " hat deinen Zugang angelegt. Ändere am besten zuerst "
+                createdBy + " hat deinen Zugang angelegt. Ändere am besten zuerst "
                         + "dein Startpasswort unter „Mein Profil“.",
                 "/profil", null);
+        emailBenachrichtigungService.accountErstellt(saved, createdBy, usernameGiven);
         return PersonResponseDTO.from(saved);
     }
 
@@ -129,6 +166,7 @@ public class PersonService {
 
         person.setFirstName(request.firstName().trim());
         person.setLastName(request.lastName().trim());
+        person.setMiddleName(blankToNull(request.middleName()));
         person.setRole(request.role());
         person.setDateOfBirth(request.dateOfBirth());
         applyRoleSpecificData(person, request.beruf(), request.dateOfTrainingStart());

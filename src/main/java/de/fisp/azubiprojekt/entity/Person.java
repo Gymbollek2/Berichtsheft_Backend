@@ -22,6 +22,9 @@ public class Person {
     @Column(nullable = false)
     private String lastName;
 
+    /** Optionaler Zweitname – geht in die E-Mail-Adresse ein (Vorname-Zweitname.Nachname@…). */
+    private String middleName;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RoleEnum role;
@@ -80,6 +83,14 @@ public class Person {
 
     public void setFirstName(String firstName) {
         this.firstName = firstName;
+    }
+
+    public String getMiddleName() {
+        return middleName;
+    }
+
+    public void setMiddleName(String middleName) {
+        this.middleName = middleName;
     }
 
     public String getLastName() {

@@ -137,6 +137,36 @@ class EmailBenachrichtigungTest {
     }
 
     @Test
+    void neuerAccountMitBenutzernameBekommtMailAnBenutzername() throws Exception {
+        anlegen("{\"firstName\":\"Jürgen\",\"lastName\":\"Weiß\",\"role\":\"ROLE_TRAINEE\",\"username\":\"jweiss\","
+                + "\"password\":\"Start12345\",\"dateOfTrainingStart\":\"" + LocalDate.now().minusMonths(1) + "\"}");
+
+        MimeMessage mail = gesendet(1).getFirst();
+        assertThat(adresse(mail)).isEqualTo("jweiss@f-i-sp.de");
+        assertThat(mail.getSubject()).isEqualTo("[Azubi Portal] Dein Zugang zum Azubi Portal wurde erstellt");
+        String html = inhalt(mail, "text/html");
+        assertThat(html).contains("Account erstellt", "Petra Pruefer", "jweiss", "href=\"https://portal.test/profil\"")
+                .doesNotContain("Start12345");
+        assertThat(inhalt(mail, "text/plain")).doesNotContain("Start12345");
+    }
+
+    @Test
+    void neuerAccountOhneBenutzernameBekommtMailAnVornameNachname() throws Exception {
+        anlegen("{\"firstName\":\"Jürgen\",\"lastName\":\"Weiß\",\"role\":\"ROLE_TRAINER\",\"username\":\"\","
+                + "\"password\":\"Start12345\"}");
+
+        assertThat(adresse(gesendet(1).getFirst())).isEqualTo("Juergen.Weiss@f-i-sp.de");
+    }
+
+    @Test
+    void zweitnameWirdMitBindestrichAnDenVornamenGehaengt() throws Exception {
+        anlegen("{\"firstName\":\"Max\",\"middleName\":\"Jürgen\",\"lastName\":\"Weiß\",\"role\":\"ROLE_TRAINER\","
+                + "\"username\":\"\",\"password\":\"Start12345\"}");
+
+        assertThat(adresse(gesendet(1).getFirst())).isEqualTo("Max-Juergen.Weiss@f-i-sp.de");
+    }
+
+    @Test
     void adresseWirdAusDemNamenGebildet() {
         assertThat(EmailService.adressteil("Jürgen")).isEqualTo("Juergen");
         assertThat(EmailService.adressteil(" Weiß ")).isEqualTo("Weiss");
@@ -154,6 +184,12 @@ class EmailBenachrichtigungTest {
         mvc.perform(post("/v1/berichtsheft/woche/" + id + "/" + aktion).header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk());
+    }
+
+    private void anlegen(String body) throws Exception {
+        mvc.perform(post("/v1/person").header("Authorization", login("ausbilder", "ausbilder123"))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
     }
 
     private String login(String username, String password) throws Exception {

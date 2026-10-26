@@ -69,9 +69,9 @@ public class BenachrichtigungLive {
         try {
             emitter.send(ereignis);
         } catch (IOException | IllegalStateException e) {
-            // Browser-Tab geschlossen oder Verbindung abgebrochen
+            // Browser-Tab geschlossen oder Verbindung abgebrochen. Spring beendet die Anfrage dann selbst –
+            // ein completeWithError wuerde den Abbruch nur erneut als Fehler durch die Fehlerbehandlung schicken.
             entfernen(personId, emitter);
-            emitter.completeWithError(e);
         }
     }
 

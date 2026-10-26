@@ -12,6 +12,7 @@ import java.time.LocalDate;
 public record PersonCreateRequestDTO(
         @NotBlank @Size(max = 100) String firstName,
         @NotBlank @Size(max = 100) String lastName,
+        @Size(max = 100) String middleName,
         @NotNull RoleEnum role,
         @Pattern(regexp = "^$|" + ValidationPatterns.USERNAME, message = ValidationPatterns.USERNAME_MESSAGE) String username,
         @NotBlank @Pattern(regexp = ValidationPatterns.PASSWORD, message = ValidationPatterns.PASSWORD_MESSAGE) String password,

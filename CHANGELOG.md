@@ -3,6 +3,13 @@
 ## [Unveröffentlicht]
 
 ### Neu
+- **Ausbildungsorganigramm** (`GET /v1/person/organigramm`, für alle Angemeldeten): Ausbilder und die Azubis/
+  Studierenden nach Ausbildungsjahr (höchstes zuerst), nur mit Name, Rolle und Beruf. Das Jahr wird bei jedem Abruf
+  aus dem Ausbildungsbeginn berechnet; wer erst noch anfängt, erscheint ab dem Tag des Ausbildungsbeginns.
+
+## [1.6.2] – 2026-10-26
+
+### Neu
 - **Benachrichtigungen** (`/v1/benachrichtigung`): Berichtsheft abgegeben (an alle Ausbilder, auch „erneut
   abgegeben“), abgenommen und Korrekturbedarf (an den Azubi, mit Kommentar), Lernziel erreicht, Willkommen für
   neue Zugänge. Täglich um 7 Uhr und nach dem Start eine Erinnerung an nicht abgegebene Berichtshefte der Vorwoche
@@ -24,8 +31,23 @@
   optional): Die Woche steht danach auf „Zur Überarbeitung“, der Azubi wird benachrichtigt.
 - Start-Migration `BenachrichtigungTypMigration`: stellt `benachrichtigung.typ` von H2-ENUM auf Text um, damit
   neue Benachrichtigungstypen auch in bestehenden Datenbanken gespeichert werden können.
+- **E-Mail „Account erstellt“**: Beim Anlegen einer Person bekommt sie eine Mail im Portal-Design mit
+  Benutzername, Rolle und Link zum Profil (ohne Startpasswort). Empfänger ist `benutzername@f-i-sp.de`, wurde
+  kein Benutzername angegeben, `Vorname.Nachname@f-i-sp.de`. Domain über `MAIL_KONTO_DOMAIN` einstellbar.
+- **Zweitname** (`middleName` beim Anlegen, Bearbeiten und in der Antwort von `/v1/person`, Spalte
+  `person.middle_name` wird beim Start automatisch angelegt). Ist einer eingetragen, wird er in allen
+  E-Mail-Adressen mit Bindestrich an den Vornamen gehängt: `Vorname-Zweitname.Nachname@…`.
+- **Versandart `exchange`** (`MAIL_VERSANDART=exchange`, Einstellungen `app.mail.exchange.*`): Versand über einen
+  eigenen Exchange-Server per SMTP mit Anmeldung (Port 587, STARTTLS), danach Kopie per IMAP in „Gesendete
+  Elemente“ (abschaltbar, Ordnername einstellbar). Fehlende Pflichtwerte verhindern den Start mit klarer Meldung.
+  Einrichtung siehe `deploy/SERVER-ANLEITUNG.md`, Abschnitt 8.
+- `deploy/build-setup.cmd -Release patch|minor|major` erhöht vor dem Bauen die Version in `pom.xml`,
+  `package.json` und `package-lock.json` und macht in beiden CHANGELOGs aus `[Unveröffentlicht]` den Abschnitt
+  der neuen Version.
 
 ### Geändert
+- In der Entwicklung (ohne Profil `prod`) gehen **alle E-Mails an `Kai-Andre.Cimbollek@f-i-sp.de`** statt an die
+  echten Empfänger (`MAIL_UMLEITEN_AN`). Auf dem Server bleibt die Umleitung aus.
 - Ausbilder sehen die Einträge einer Woche erst, wenn der Azubi sie abgegeben hat (`eintraegeSichtbar` in
   `/woche`, nicht abgegebene Wochen fehlen in `/historie`). Zurückgegebene Wochen bleiben sichtbar.
 - Erneut eingereichte Wochen liefern kein `geprueftVon`/`geprueftAm` der letzten Rückgabe mehr – die neue
@@ -34,6 +56,14 @@
   Status `ABGEZEICHNET` und der Endpunkt `/woche/{id}/abzeichnen`, damit vorhandene Daten weiter gelten.
 - Standard-Port **5016** statt 8443 (`PORT`), auch für `install.cmd`. Bestehende Installationen behalten
   bei `update.cmd` ihren Port.
+
+### Behoben
+- Schloss ein Browser-Tab mit Live-Benachrichtigungen, stand bei der nächsten Meldung bzw. dem nächsten
+  Lebenszeichen ein „Unerwarteter Fehler“ samt Folgefehler (`HttpMessageNotWritableException` bei
+  `text/event-stream`) im Log. Abgebrochene Verbindungen werden jetzt still entfernt.
+- E-Mail-Versand per SMTP dauerte je Mail bis zu 30 Sekunden, wenn der eigene Rechnername keinen DNS-Rückwärts-
+  Eintrag hat (z. B. am Arbeitsplatz-PC): Jakarta Mail schlug ihn für EHLO und Message-ID nach. EHLO-Name
+  (Rechnername ohne DNS) und `mail.from` (Absender) werden jetzt vorab gesetzt – auch bei der Versandart `exchange`.
 
 ## [1.6.1] – 2026-10-22
 
