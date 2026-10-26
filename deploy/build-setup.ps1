@@ -148,7 +148,9 @@ $frontendStand = Stand @((Join-Path $angular 'src'), (Join-Path $angular 'public
                          (Join-Path $angular 'package-lock.json'), (Join-Path $angular 'angular.json'))
 $frontendBauen = $Neu -or -not (Test-Path $frontendIndex) -or $frontendStand -gt [IO.File]::GetLastWriteTimeUtc($frontendIndex)
 
-$jarSuche = { Get-ChildItem (Join-Path $backend 'target') -Filter '*.jar' -ErrorAction SilentlyContinue |
+# Genau das JAR der aktuellen Version – nach einer neuen Version liegen die alten JARs noch in target\, und das
+# erste gefundene war alphabetisch das aelteste (so kam ein altes Backend ins Setup)
+$jarSuche = { Get-ChildItem (Join-Path $backend 'target') -Filter "*-$version.jar" -ErrorAction SilentlyContinue |
               Where-Object { $_.Name -notlike '*-plain.jar' -and $_.Name -notlike '*-sources.jar' } | Select-Object -First 1 }
 $jar = & $jarSuche
 $backendStand = Stand @((Join-Path $backend 'src\main'), (Join-Path $backend 'pom.xml'))
@@ -181,7 +183,8 @@ if ($backendBauen) {
     if (-not $MitTests) { $mvnArgs += '-DskipTests' }
     Push-Location $backend; try { Ausfuehren (Join-Path $backend 'mvnw.cmd') $mvnArgs } finally { Pop-Location }
     $jar = & $jarSuche
-    if (-not $jar) { throw 'Backend-JAR nicht gefunden (target\*.jar)' }
+    if (-not $jar) { throw "Backend-JAR nicht gefunden (target\*-$version.jar)" }
+    if ($backendStand -gt $jar.LastWriteTimeUtc) { throw "Backend-JAR $($jar.Name) ist älter als der Quellcode – Build prüfen" }
 } else {
     Schritt 'Backend unverändert – vorhandenes JAR wird verwendet'
 }

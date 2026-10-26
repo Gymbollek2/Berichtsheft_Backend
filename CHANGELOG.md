@@ -2,10 +2,17 @@
 
 ## [Unveröffentlicht]
 
+## [1.7.0] – 2026-10-26
+
 ### Neu
 - **Ausbildungsorganigramm** (`GET /v1/person/organigramm`, für alle Angemeldeten): Ausbilder und die Azubis/
   Studierenden nach Ausbildungsjahr (höchstes zuerst), nur mit Name, Rolle und Beruf. Das Jahr wird bei jedem Abruf
   aus dem Ausbildungsbeginn berechnet; wer erst noch anfängt, erscheint ab dem Tag des Ausbildungsbeginns.
+
+### Behoben
+- `build-setup` packte das erste JAR aus `target\` ins Setup – nach einer neuen Version das alte (z. B. 1.6.1
+  im Setup 1.7.0; Folge: „Failed to convert value … "organigramm"“). Jetzt wird genau das JAR der aktuellen
+  Version genommen; ist es älter als der Quellcode, bricht der Build ab.
 
 ## [1.6.2] – 2026-10-26
 
