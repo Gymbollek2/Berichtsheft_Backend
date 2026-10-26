@@ -5,6 +5,7 @@ import de.fisp.azubiprojekt.dao.UserDAO;
 import de.fisp.azubiprojekt.dto.request.ValidationPatterns;
 import de.fisp.azubiprojekt.entity.Person;
 import de.fisp.azubiprojekt.entity.Users;
+import de.fisp.azubiprojekt.util.AnredeEnum;
 import de.fisp.azubiprojekt.util.RoleEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,6 +95,7 @@ public class ErsterAusbilderInitializer implements ApplicationRunner {
         }
         Person person = new Person(props.getProperty("vorname", "Ausbildung").trim(),
                 props.getProperty("nachname", "Leitung").trim(), RoleEnum.ROLE_TRAINER, 0, null, null);
+        person.setAnrede(AnredeEnum.vermuten(person.getFirstName()));
         person.setUsers(new Users(benutzername, passwordEncoder.encode(passwort), person));
         personDAO.save(person);
         log.info("Erster Ausbilder-Zugang '{}' angelegt – bitte das Passwort nach der ersten Anmeldung ändern", benutzername);

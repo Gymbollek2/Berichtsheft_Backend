@@ -13,7 +13,9 @@ import de.fisp.azubiprojekt.entity.Users;
 import de.fisp.azubiprojekt.exceptions.ActionNotAllowedException;
 import de.fisp.azubiprojekt.exceptions.InvalidRequestException;
 import de.fisp.azubiprojekt.exceptions.ResourceNotFoundException;
+import de.fisp.azubiprojekt.util.AnredeEnum;
 import de.fisp.azubiprojekt.util.BenachrichtigungTypEnum;
+import de.fisp.azubiprojekt.util.Bezeichnung;
 import de.fisp.azubiprojekt.util.RoleEnum;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -109,6 +111,7 @@ public class PersonService {
         Person person = new Person(request.firstName().trim(), request.lastName().trim(), request.role(),
                 0, null, request.dateOfBirth());
         person.setMiddleName(blankToNull(request.middleName()));
+        person.setAnrede(anredeOderVermutet(request.anrede(), person.getFirstName()));
         applyRoleSpecificData(person, request.beruf(), request.dateOfTrainingStart());
 
         boolean usernameGiven = request.username() != null && !request.username().isBlank();
@@ -140,6 +143,7 @@ public class PersonService {
     public PersonResponseDTO update(Long id, PersonUpdateRequestDTO request) {
         Person person = findPerson(id);
         RoleEnum oldRole = person.getRole();
+        AnredeEnum anrede = anredeOderVermutet(request.anrede(), request.firstName());
         currentUserService.requireCanManage(oldRole);
         currentUserService.requireCanManage(request.role());
         if (Objects.equals(id, currentUserService.getPersonId()) && request.role() != oldRole) {
@@ -150,7 +154,8 @@ public class PersonService {
         }
         if (oldRole.isLearner() && !request.role().isLearner() && !person.getBerichtshefte().isEmpty()) {
             throw new InvalidRequestException("Die Person hat bereits Berichtsheft-Einträge und kann deshalb "
-                    + "nicht zu " + request.role().getLabel() + " gemacht werden");
+                    + (anrede == AnredeEnum.FRAU ? "nicht zur " : "nicht zum ") + request.role().getLabel(anrede)
+                    + " gemacht werden");
         }
         validateTrainingData(request.role(), request.dateOfTrainingStart(), request.dateOfBirth());
 
@@ -167,6 +172,7 @@ public class PersonService {
         person.setFirstName(request.firstName().trim());
         person.setLastName(request.lastName().trim());
         person.setMiddleName(blankToNull(request.middleName()));
+        person.setAnrede(anrede);
         person.setRole(request.role());
         person.setDateOfBirth(request.dateOfBirth());
         applyRoleSpecificData(person, request.beruf(), request.dateOfTrainingStart());
@@ -210,7 +216,7 @@ public class PersonService {
     void validateTrainingData(RoleEnum role, LocalDate trainingStart, LocalDate birth) {
         if (role.isLearner()) {
             if (trainingStart == null) {
-                throw new InvalidRequestException("Für " + role.getLabel() + " ist der Ausbildungsbeginn Pflicht");
+                throw new InvalidRequestException("Für " + role.getMehrzahl() + " ist der Ausbildungsbeginn Pflicht");
             }
             if (trainingStart.isAfter(LocalDate.now().plusYears(1))) {
                 throw new InvalidRequestException("Der Ausbildungsbeginn darf höchstens ein Jahr in der Zukunft liegen");
@@ -224,7 +230,8 @@ public class PersonService {
     /** Ausbildungsberuf und -beginn gibt es nur fuer Lernende; bei Ausbildern werden sie geleert. */
     private void applyRoleSpecificData(Person person, String beruf, LocalDate trainingStart) {
         if (person.getRole().isLearner()) {
-            person.setBeruf(blankToNull(beruf));
+            // Beruf passend zur Anrede: "Fachinformatiker/in …" -> "Fachinformatikerin …" bei Frau
+            person.setBeruf(Bezeichnung.fuer(blankToNull(beruf), person.getAnrede()));
             person.setDateOfTrainingStart(trainingStart);
         } else {
             person.setBeruf(null);
@@ -265,6 +272,11 @@ public class PersonService {
                 .replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss");
         s = Normalizer.normalize(s, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
         return s.replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+    }
+
+    /** Ohne Angabe wird die Anrede aus dem Vornamen vermutet (z. B. bei Aufrufen ohne das neue Feld). */
+    private static AnredeEnum anredeOderVermutet(AnredeEnum anrede, String vorname) {
+        return anrede != null ? anrede : AnredeEnum.vermuten(vorname);
     }
 
     private static String blankToNull(String value) {

@@ -2,6 +2,18 @@
 
 ## [Unveröffentlicht]
 
+### Neu
+- **Anrede** (`anrede`: `HERR`/`FRAU`) für Personen. Danach richten sich Rolle und Beruf, es wird nicht mehr gegendert:
+  Auszubildender/Auszubildende, Dualer Student/Duale Studentin, Ausbilder/Ausbilderin, Fachinformatiker/
+  Fachinformatikerin usw. (`roleLabel` in allen Antworten, Beruf wird beim Speichern angepasst). Fehlt die Anrede
+  beim Anlegen, wird sie aus dem Vornamen vermutet.
+- Einmalige Umstellung beim Start (`AnredeMigration`): Bestehende Personen bekommen eine Anrede aus dem Vornamen
+  (jede Entscheidung steht im Log, änderbar unter Personen), Berufe passen sich an, in den Lernzielen des Rahmenplans
+  wird aus „Kunden und Kundinnen“ „Kunden“ (auch in `rahmenplan-fiae.csv`).
+
+### Geändert
+- Texte ohne Gendern: „duale Studenten“ statt „Studierende“, Meldungen und Protokoll ohne „/in“.
+
 ## [1.7.0] – 2026-10-26
 
 ### Neu

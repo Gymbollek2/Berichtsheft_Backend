@@ -146,7 +146,19 @@ class BerichtsheftApiTest {
                                 + "\"beruf\":\"Fachinformatiker/in\",\"dateOfTrainingStart\":\"" + start + "\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username").value("juergen.neu"))
-                .andExpect(jsonPath("$.yearOfTraining").value(1));
+                .andExpect(jsonPath("$.yearOfTraining").value(1))
+                // Ohne Anrede aus dem Vornamen vermutet, Beruf und Rolle ohne Gendern
+                .andExpect(jsonPath("$.anrede").value("HERR"))
+                .andExpect(jsonPath("$.beruf").value("Fachinformatiker"))
+                .andExpect(jsonPath("$.roleLabel").value("Auszubildender"));
+
+        mvc.perform(post("/v1/person").header("Authorization", trainer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"anrede\":\"FRAU\",\"firstName\":\"Kim\",\"lastName\":\"Klar\",\"role\":\"ROLE_STUDENT\","
+                                + "\"password\":\"geheim123\",\"beruf\":\"Wirtschaftsinformatiker/in\",\"dateOfTrainingStart\":\"" + start + "\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.beruf").value("Wirtschaftsinformatikerin"))
+                .andExpect(jsonPath("$.roleLabel").value("Duale Studentin"));
 
         // Neuer Azubi bekommt automatisch alle Lernziele zugewiesen und kann sich anmelden
         String neu = login("juergen.neu", "geheim123");

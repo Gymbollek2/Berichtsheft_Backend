@@ -113,7 +113,7 @@ public class EmailBenachrichtigungService {
                 .absatz("**" + angelegtVon + "** hat für dich einen Zugang zum Azubi Portal angelegt. "
                         + "Ab sofort kannst du dich mit folgenden Daten anmelden:")
                 .liste(List.of("Benutzername: **" + person.getUsers().getUsername() + "**",
-                        "Rolle: **" + person.getRole().getLabel() + "**"))
+                        "Rolle: **" + person.getRoleLabel() + "**"))
                 .absatz("Dein Startpasswort bekommst du von " + angelegtVon + ". Bitte ändere es nach der ersten "
                         + "Anmeldung unter „Mein Profil“.")
                 .button("Zum Azubi Portal", "/profil");

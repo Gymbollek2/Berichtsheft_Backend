@@ -34,7 +34,7 @@ import java.util.List;
 public class DemoDataInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DemoDataInitializer.class);
-    private static final String BERUF = "Fachinformatiker/in Anwendungsentwicklung";
+    private static final String BERUF = "Fachinformatiker/in Anwendungsentwicklung"; // je nach Anrede angepasst
 
     private final PersonDAO personDAO;
     private final UserDAO userDAO;
@@ -142,7 +142,8 @@ public class DemoDataInitializer implements ApplicationRunner {
     private Person createPerson(String first, String last, RoleEnum role, String username, String password,
                                 String beruf, int jahr, LocalDate start) {
         Person p = new Person(first, last, role, jahr, start, null);
-        p.setBeruf(beruf);
+        p.setAnrede(AnredeEnum.vermuten(first));
+        p.setBeruf(Bezeichnung.fuer(beruf, p.getAnrede()));
         p.setUsers(new Users(username, passwordEncoder.encode(password), p));
         return personDAO.save(p);
     }

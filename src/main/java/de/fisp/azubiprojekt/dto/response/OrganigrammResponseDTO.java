@@ -20,7 +20,7 @@ public record OrganigrammResponseDTO(List<Mitglied> ausbilder, List<Jahrgang> ja
 
         public static Mitglied from(Person person) {
             return new Mitglied(person.getId(), person.getFirstName(), person.getLastName(), person.getFullName(),
-                    person.getRole(), person.getRole().getLabel(), person.getBeruf());
+                    person.getRole(), person.getRoleLabel(), person.getBeruf());
         }
     }
 }

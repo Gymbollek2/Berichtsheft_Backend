@@ -67,7 +67,7 @@ public class CurrentUserService {
 
     /**
      * Prueft, ob der angemeldete Benutzer eine Person mit der angegebenen Rolle verwalten darf.
-     * Ausbilder duerfen alle Personen verwalten (Azubis, Studierende und andere Ausbilder).
+     * Ausbilder duerfen alle Personen verwalten (Azubis, duale Studenten und andere Ausbilder).
      */
     public void requireCanManage(RoleEnum targetRole) {
         if (!isStaff()) {
