@@ -2,6 +2,7 @@ package de.fisp.azubiprojekt.dto.response;
 
 import de.fisp.azubiprojekt.entity.Person;
 import de.fisp.azubiprojekt.entity.Users;
+import de.fisp.azubiprojekt.util.AnredeEnum;
 import de.fisp.azubiprojekt.util.RoleEnum;
 
 import java.time.LocalDate;
@@ -11,6 +12,8 @@ public record PersonResponseDTO(
         Long id,
         String firstName,
         String lastName,
+        String middleName,
+        AnredeEnum anrede,
         String fullName,
         RoleEnum role,
         String roleLabel,
@@ -27,9 +30,11 @@ public record PersonResponseDTO(
                 person.getId(),
                 person.getFirstName(),
                 person.getLastName(),
+                person.getMiddleName(),
+                person.getAnrede(),
                 person.getFullName(),
                 person.getRole(),
-                person.getRole().getLabel(),
+                person.getRoleLabel(),
                 users != null ? users.getUsername() : null,
                 person.getBeruf(),
                 person.getYearOfTraining(),

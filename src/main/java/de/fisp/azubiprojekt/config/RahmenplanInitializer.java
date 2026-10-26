@@ -17,7 +17,7 @@ import java.io.InputStream;
 
 /**
  * Spielt beim Start einmalig die Richt- und Groblernziele des Ausbildungsrahmenplans
- * Fachinformatiker/in Anwendungsentwicklung (FIAusbV 2020) samt je einem Beispiel-Feinlernziel ein.
+ * Fachinformatiker Anwendungsentwicklung (FIAusbV 2020) samt je einem Beispiel-Feinlernziel ein.
  * <p>
  * Quelle: {@code src/main/resources/lernziele/rahmenplan-fiae.csv} (gleiches Format wie der CSV-Import).
  * Laeuft nach den Demo-Daten, damit auch die Demo-Azubis alle Lernziele zugewiesen bekommen.
@@ -51,7 +51,7 @@ public class RahmenplanInitializer implements ApplicationRunner {
         }
         try (InputStream in = new ClassPathResource(CSV).getInputStream()) {
             CsvImportResponseDTO result = lernzielService.importCsv(in);
-            log.info("Ausbildungsrahmenplan Fachinformatiker/in Anwendungsentwicklung eingespielt: {} Lernziele", result.importiert());
+            log.info("Ausbildungsrahmenplan Fachinformatiker Anwendungsentwicklung eingespielt: {} Lernziele", result.importiert());
             result.fehler().forEach(f -> log.warn("Rahmenplan-Import: {}", f));
         }
     }

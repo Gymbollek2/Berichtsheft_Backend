@@ -10,8 +10,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Die Rolle "Administrator/in" gibt es nicht mehr – Ausbilder/innen duerfen jetzt alles.
- * Bestehende Admins werden beim Start einmalig zu Ausbilder/innen. Laeuft per SQL und vor allen
+ * Die Rolle "Administrator" gibt es nicht mehr – Ausbilder duerfen jetzt alles.
+ * Bestehende Admins werden beim Start einmalig zu Ausbildern. Laeuft per SQL und vor allen
  * anderen Startaufgaben, weil {@code ROLE_ADMIN} nicht mehr in {@code RoleEnum} steht und Hibernate
  * solche Zeilen sonst nicht laden koennte. Alte Admin-Tokens werden dadurch ungueltig (Rolle im Token),
  * die Betroffenen melden sich einfach neu an.
@@ -37,7 +37,7 @@ public class RollenMigration implements ApplicationRunner {
             int geaendert = jdbcTemplate.update(
                     "UPDATE person SET role = 'ROLE_TRAINER' WHERE CAST(role AS VARCHAR(50)) = 'ROLE_ADMIN'");
             if (geaendert > 0) {
-                log.info("Rolle Administrator/in entfernt: {} Person(en) sind jetzt Ausbilder/in", geaendert);
+                log.info("Rolle Administrator entfernt: {} Person(en) sind jetzt Ausbilder", geaendert);
             }
         } catch (DataAccessException e) {
             // Darf den Start nie verhindern – schlimmstenfalls muss ein alter Admin von Hand umgestellt werden

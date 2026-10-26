@@ -4,6 +4,7 @@ import de.fisp.azubiprojekt.dto.request.PasswordResetRequestDTO;
 import de.fisp.azubiprojekt.dto.request.PersonCreateRequestDTO;
 import de.fisp.azubiprojekt.dto.request.PersonUpdateRequestDTO;
 import de.fisp.azubiprojekt.dto.response.MessageResponseDTO;
+import de.fisp.azubiprojekt.dto.response.OrganigrammResponseDTO;
 import de.fisp.azubiprojekt.dto.response.PersonResponseDTO;
 import de.fisp.azubiprojekt.service.PersonService;
 import de.fisp.azubiprojekt.util.RoleEnum;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/** Personen- und Benutzerverwaltung (nur Ausbilder). */
+/** Personen- und Benutzerverwaltung (nur Ausbilder) und das Ausbildungsorganigramm (fuer alle). */
 @RestController
 @RequestMapping("/v1/person")
 public class PersonController {
@@ -35,6 +36,12 @@ public class PersonController {
     @PreAuthorize("hasRole('TRAINER')")
     public List<PersonResponseDTO> getLearners() {
         return personService.getLearners();
+    }
+
+    /** Ausbildungsorganigramm – fuer alle angemeldeten Personen. */
+    @GetMapping("/organigramm")
+    public OrganigrammResponseDTO getOrganigramm() {
+        return personService.getOrganigramm();
     }
 
     /** Azubis duerfen nur sich selbst abrufen – wird im Service geprueft. */

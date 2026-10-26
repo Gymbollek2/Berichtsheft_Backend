@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -59,6 +60,15 @@ public class GlobalExceptionHandler {
             MissingServletRequestParameterException.class})
     public ResponseEntity<ErrorResponse> handleUnreadable(Exception ex) {
         return build(HttpStatus.BAD_REQUEST, "Ungültige Anfrage: " + ex.getMessage());
+    }
+
+    /**
+     * Der Browser hat die Verbindung geschlossen (z. B. Tab der Live-Glocke zu). Eine Antwort ist nicht mehr
+     * moeglich – bei Server-Sent Events wuerde der Versuch, JSON zu schreiben, nur einen Folgefehler ausloesen.
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleClientAbort(AsyncRequestNotUsableException ex) {
+        log.debug("Verbindung vom Client geschlossen: {}", ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

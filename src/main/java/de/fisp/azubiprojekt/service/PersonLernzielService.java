@@ -69,7 +69,7 @@ public class PersonLernzielService {
         return fortschritt(currentUserService.resolveAccessiblePerson(personId), childCounts());
     }
 
-    /** Fortschritt aller Azubis und dualen Studierenden (fuer Ausbilder-Dashboard). */
+    /** Fortschritt aller Azubis und dualen Studenten (fuer Ausbilder-Dashboard). */
     @Transactional(readOnly = true)
     public List<FortschrittResponseDTO> getFortschrittAlle() {
         Map<Long, Long> children = childCounts();

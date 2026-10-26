@@ -34,6 +34,12 @@ hat – ohne Änderungen dauert das wenige Sekunden:
 
 Optionen: `-MitTests` (vorher alle Tests), `-Neu` (alles neu bauen), `-FrontendPfad D:\…\Berichtsheft_Frontend`.
 
+**Neue Version veröffentlichen:** `deploy\build-setup.cmd -Release minor` (oder `patch` / `major`). Das Skript
+erhöht vor dem Bauen die Version (Ausgangspunkt ist die höhere aus `pom.xml` und `package.json`), trägt sie in
+`pom.xml`, `package.json` und `package-lock.json` ein und macht in beiden CHANGELOGs aus `[Unveröffentlicht]`
+den Abschnitt `[<Version>] – <Datum>` mit einem neuen, leeren `[Unveröffentlicht]` darüber. Neue Einträge
+also vorher unter `[Unveröffentlicht]` sammeln. Ohne `-Release` bleibt die Version gleich (Probe-Builds).
+
 Inhalt des ZIP:
 
 | Inhalt | Zweck |
@@ -254,3 +260,50 @@ Muss ein Proxy benutzt werden, in den Java-Argumenten `-Dhttps.proxyHost=… -Dh
 | „Microsoft Graph hat die Mail abgelehnt (HTTP 403): Access is denied“ | Senderecht fehlt oder ist noch nicht aktiv – 7.3 prüfen (`Test-ServicePrincipalAuthorization`), ggf. bis zu 2 h warten. |
 | „… (HTTP 404) … ErrorInvalidUser“ / „MailboxNotEnabledForRESTAPI“ | Postfach `MAIL_ABSENDER` existiert nicht in Exchange Online. |
 | Verbindungsfehler / Zeitüberschreitung | Firewall oder Proxy (7.4). |
+
+## 8. E-Mail-Versand über einen eigenen Exchange-Server (SMTP + IMAP)
+
+Für einen Exchange-Server im eigenen Netz (ohne Microsoft 365) gibt es die Versandart `exchange`:
+Die Anwendung meldet sich mit Benutzername und Passwort eines Postfachs per **SMTP** an und verschickt darüber
+(Client-Submission, Port 587 mit STARTTLS). Danach legt sie per **IMAP** eine Kopie in den Ordner
+„Gesendete Elemente“ – das macht Exchange bei SMTP-Versand nicht selbst. IMAP dient nur dieser Kopie,
+verschickt wird immer per SMTP. Scheitert nur die Kopie, ist die Mail trotzdem raus (Warnung im Log).
+
+**Bei der IT klären:**
+
+| Was | Warum |
+|---|---|
+| Postfach für den Versand (z. B. `ausbildung@firma.de`) mit Passwort | Damit meldet sich die Anwendung an; es ist auch der Absender. |
+| Client-Submission (SMTP-Authentifizierung) ist erlaubt, Port 587 | Bei Exchange der Empfangsconnector „Client Frontend“. |
+| IMAP4-Dienst läuft, Port 993 | Nur für die Kopie in „Gesendete Elemente“ (sonst `MAIL_EXCHANGE_GESENDET_SPEICHERN=false`). |
+| Zertifikat des Exchange-Servers | Stammt es von der Firmen-CA, kennt Java es nicht: `MAIL_EXCHANGE_SSL_TRUST=mail.firma.de` setzen. |
+
+**Server einstellen** – in `berichtsheft-service.xml` ergänzen und den Dienst neu starten:
+
+```xml
+<env name="MAIL_VERSANDART" value="exchange"/>
+<env name="MAIL_EXCHANGE_SMTP_HOST" value="mail.firma.de"/>
+<env name="MAIL_EXCHANGE_BENUTZERNAME" value="ausbildung@firma.de"/>
+<env name="MAIL_EXCHANGE_PASSWORT" value="<Passwort des Postfachs>"/>
+<env name="MAIL_ABSENDER" value="ausbildung@firma.de"/>
+<!-- nur wenn abweichend: -->
+<env name="MAIL_EXCHANGE_IMAP_HOST" value="imap.firma.de"/>
+<env name="MAIL_EXCHANGE_GESENDET_ORDNER" value="Sent Items"/>
+<env name="MAIL_EXCHANGE_SSL_TRUST" value="mail.firma.de"/>
+<env name="MAIL_EXCHANGE_EHLO_NAME" value="scapa02e.f-i-sp.de"/>
+```
+
+Alle Einstellungen mit Standardwerten stehen in `application.properties` unter „Exchange-Server“
+(`app.mail.exchange.*`: Ports 587/993, STARTTLS bzw. SSL, Zeitlimit, Ordnername). Lokal zum Ausprobieren
+können sie dort auch direkt eingetragen werden – das Passwort aber nur als Umgebungsvariable.
+
+**Prüfen:** Im Log steht „E-Mail … per Exchange verschickt“, die Mail liegt in „Gesendete Elemente“ des Postfachs.
+
+| Meldung im Log | Ursache / Lösung |
+|---|---|
+| Dienst startet nicht: „… es fehlt: app.mail.exchange.…“ | Umgebungsvariablen oben fehlen oder sind falsch geschrieben. |
+| „535 5.7.3 Authentication unsuccessful“ | Benutzername/Passwort falsch oder SMTP-Authentifizierung für das Postfach gesperrt. |
+| „STARTTLS is required but host does not support STARTTLS“ | Falscher Port – 587 verwenden oder bei Port 465 `MAIL_EXCHANGE_SSL=true`. |
+| „PKIX path building failed“ | Zertifikat unbekannt: `MAIL_EXCHANGE_SSL_TRUST=<Servername>`. |
+| „5.7.60 … not have permissions to send as this sender“ | `MAIL_ABSENDER` ist nicht das angemeldete Postfach und es fehlt das Senden-als-Recht. |
+| „… Kopie in „Gesendete Elemente“ per IMAP ist fehlgeschlagen“ | IMAP-Dienst aus/Port gesperrt oder Ordnername falsch (englisch „Sent Items“). Die Mail ist trotzdem verschickt. |

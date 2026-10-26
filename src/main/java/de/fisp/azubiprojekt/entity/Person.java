@@ -1,5 +1,6 @@
 package de.fisp.azubiprojekt.entity;
 
+import de.fisp.azubiprojekt.util.AnredeEnum;
 import de.fisp.azubiprojekt.util.RoleEnum;
 import jakarta.persistence.*;
 
@@ -22,11 +23,19 @@ public class Person {
     @Column(nullable = false)
     private String lastName;
 
+    /** Optionaler Zweitname – geht in die E-Mail-Adresse ein (Vorname-Zweitname.Nachname@…). */
+    private String middleName;
+
+    /** Herr oder Frau – danach richten sich Rollen- und Berufsbezeichnungen (es wird nicht gegendert). */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    private AnredeEnum anrede;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RoleEnum role;
 
-    /** Ausbildungsberuf, z. B. "Fachinformatiker/in Anwendungsentwicklung". */
+    /** Ausbildungsberuf, z. B. "Fachinformatiker Anwendungsentwicklung" bzw. "Fachinformatikerin …". */
     private String beruf;
 
     private int yearOfTraining;
@@ -80,6 +89,27 @@ public class Person {
 
     public void setFirstName(String firstName) {
         this.firstName = firstName;
+    }
+
+    public AnredeEnum getAnrede() {
+        return anrede;
+    }
+
+    public void setAnrede(AnredeEnum anrede) {
+        this.anrede = anrede;
+    }
+
+    /** Rollenbezeichnung passend zur Anrede, z. B. "Ausbilderin" oder "Dualer Student". */
+    public String getRoleLabel() {
+        return role == null ? null : role.getLabel(anrede);
+    }
+
+    public String getMiddleName() {
+        return middleName;
+    }
+
+    public void setMiddleName(String middleName) {
+        this.middleName = middleName;
     }
 
     public String getLastName() {

@@ -343,7 +343,7 @@ public class BerichtsheftService {
         boolean editierbar = status.isEditable() && Objects.equals(person.getId(), currentUserService.getPersonId());
         return new WochenberichtResponseDTO(
                 bericht.map(Wochenbericht::getId).orElse(null),
-                person.getId(), person.getFullName(), person.getBeruf(), person.getYearOfTraining(),
+                person.getId(), person.getFullName(), person.getRoleLabel(), person.getBeruf(), person.getYearOfTraining(),
                 ws, we, kalenderwoche(ws), wochenJahr(ws),
                 status, status.getLabel(), editierbar,
                 bericht.map(Wochenbericht::getKommentar).orElse(null),
@@ -393,7 +393,7 @@ public class BerichtsheftService {
     private Person requireLearner() {
         Person person = currentUserService.getPerson();
         if (!person.getRole().isLearner()) {
-            throw new ActionNotAllowedException("Nur Auszubildende und duale Studierende führen ein Berichtsheft");
+            throw new ActionNotAllowedException("Nur Auszubildende und duale Studenten führen ein Berichtsheft");
         }
         return person;
     }

@@ -22,15 +22,25 @@
 .PARAMETER Neu
     Alles neu bauen (Maven clean, Frontend, Java-Laufzeit) statt nur das Geänderte.
 
+.PARAMETER Release
+    Vor dem Bauen eine neue Version festlegen: patch (1.6.1 -> 1.6.2), minor (-> 1.7.0) oder major (-> 2.0.0).
+    Ausgangspunkt ist die höhere Version aus pom.xml und package.json. Die neue Version wird in pom.xml,
+    package.json und package-lock.json eingetragen; in beiden CHANGELOGs wird "[Unveröffentlicht]" zu
+    "[<Version>] – <Datum>" und darüber ein neuer, leerer Abschnitt "[Unveröffentlicht]" angelegt.
+    Ohne -Release bleibt die Version unverändert (für Probe-Builds).
+
 .EXAMPLE
     .\deploy\build-setup.cmd
     .\deploy\build-setup.cmd -MitTests
+    .\deploy\build-setup.cmd -Release minor
 #>
 [CmdletBinding()]
 param(
     [string]$FrontendPfad,
     [switch]$MitTests,
-    [switch]$Neu
+    [switch]$Neu,
+    [ValidateSet('patch', 'minor', 'major')]
+    [string]$Release
 )
 
 $ErrorActionPreference = 'Stop'
@@ -61,10 +71,63 @@ $FrontendPfad = (Resolve-Path $FrontendPfad).Path
 $angular = Join-Path $FrontendPfad 'azubi-portal'
 if (-not (Test-Path (Join-Path $angular 'package.json'))) { throw "Frontend nicht gefunden: $angular (Pfad mit -FrontendPfad angeben)" }
 
+# ---------------------------------------------------------------- Neue Version (nur mit -Release)
+# Dateien werden als Text geändert (nicht per XML/JSON neu geschrieben), damit Formatierung und Zeilenenden bleiben
+$utf8 = New-Object Text.UTF8Encoding($false)
+function Lesen([string]$pfad) { [IO.File]::ReadAllText($pfad, $utf8) }
+function Schreiben([string]$pfad, [string]$inhalt) { [IO.File]::WriteAllText($pfad, $inhalt, $utf8) }
+# Ersetzt genau einen Treffer – sonst stimmt der Aufbau der Datei nicht und es wird lieber abgebrochen
+function Ersetzen([string]$pfad, [string]$muster, [string]$ersatz, [int]$anzahl = 1) {
+    $inhalt = Lesen $pfad
+    $treffer = [regex]::Matches($inhalt, $muster).Count
+    if ($treffer -ne $anzahl) { throw "$pfad`: $treffer statt $anzahl Treffer für /$muster/ – bitte von Hand prüfen" }
+    Schreiben $pfad ([regex]::Replace($inhalt, $muster, $ersatz))
+}
+
+if ($Release) {
+    $pom = Join-Path $backend 'pom.xml'
+    $paket = Join-Path $angular 'package.json'
+    $sperre = Join-Path $angular 'package-lock.json'
+    $changelogs = @((Join-Path $backend 'CHANGELOG.md'), (Join-Path $FrontendPfad 'CHANGELOG.md'))
+    $pomMuster = '(<artifactId>berichtsheft-backend</artifactId>\s*<version>)([^<]+)(</version>)'
+
+    $bisher = @(
+        [version]([regex]::Match((Lesen $pom), $pomMuster).Groups[2].Value),
+        [version]([regex]::Match((Lesen $paket), '"version":\s*"([^"]+)"').Groups[1].Value)
+    ) | Sort-Object -Descending | Select-Object -First 1
+    $neueVersion = switch ($Release) {
+        'major' { "$($bisher.Major + 1).0.0" }
+        'minor' { "$($bisher.Major).$($bisher.Minor + 1).0" }
+        'patch' { "$($bisher.Major).$($bisher.Minor).$($bisher.Build + 1)" }
+    }
+    foreach ($c in $changelogs) {
+        $text = Lesen $c
+        if ($text -match "(?m)^## \[$([regex]::Escape($neueVersion))\]") { throw "$c enthält schon einen Abschnitt [$neueVersion]" }
+        if ($text -match '(?s)## \[Unveröffentlicht\]\s*(## \[|$)') {
+            Write-Warning "$c`: unter [Unveröffentlicht] steht nichts – der Abschnitt [$neueVersion] bleibt leer"
+        }
+    }
+
+    Schritt "Neue Version $bisher -> $neueVersion ($Release)"
+    Ersetzen $pom $pomMuster "`${1}$neueVersion`${3}"
+    Ersetzen $paket '("version":\s*")[^"]+(")' "`${1}$neueVersion`${2}"
+    if (Test-Path $sperre) {
+        # Oben und unter "packages" -> "" steht die eigene Version; die erste "version"-Zeile je Block
+        Ersetzen $sperre '(?m)^(  "version":\s*")[^"]+(")' "`${1}$neueVersion`${2}"
+        Ersetzen $sperre '(?m)(^    "":\s*\{\s*"name":\s*"[^"]*",\s*"version":\s*")[^"]+(")' "`${1}$neueVersion`${2}"
+    }
+    $datum = Get-Date -Format 'yyyy-MM-dd'
+    foreach ($c in $changelogs) {
+        $zeilenende = if ((Lesen $c).Contains("`r`n")) { "`r`n" } else { "`n" }
+        Ersetzen $c '(?m)^## \[Unveröffentlicht\][ \t]*(?=\r?$)' `
+                "## [Unveröffentlicht]$zeilenende$zeilenende## [$neueVersion] – $datum"
+    }
+}
+
 $version = ([xml](Get-Content (Join-Path $backend 'pom.xml') -Raw -Encoding UTF8)).project.version
-$release = Join-Path $backend 'release'
-$cache = Join-Path $release '_cache'
-$zip = Join-Path $release "Berichtsheft-Setup-$version.zip"
+$releaseOrdner = Join-Path $backend 'release'
+$cache = Join-Path $releaseOrdner '_cache'
+$zip = Join-Path $releaseOrdner "Berichtsheft-Setup-$version.zip"
 New-Item -ItemType Directory -Force -Path $cache | Out-Null
 
 $javaHome = $env:JAVA_HOME
@@ -85,7 +148,9 @@ $frontendStand = Stand @((Join-Path $angular 'src'), (Join-Path $angular 'public
                          (Join-Path $angular 'package-lock.json'), (Join-Path $angular 'angular.json'))
 $frontendBauen = $Neu -or -not (Test-Path $frontendIndex) -or $frontendStand -gt [IO.File]::GetLastWriteTimeUtc($frontendIndex)
 
-$jarSuche = { Get-ChildItem (Join-Path $backend 'target') -Filter '*.jar' -ErrorAction SilentlyContinue |
+# Genau das JAR der aktuellen Version – nach einer neuen Version liegen die alten JARs noch in target\, und das
+# erste gefundene war alphabetisch das aelteste (so kam ein altes Backend ins Setup)
+$jarSuche = { Get-ChildItem (Join-Path $backend 'target') -Filter "*-$version.jar" -ErrorAction SilentlyContinue |
               Where-Object { $_.Name -notlike '*-plain.jar' -and $_.Name -notlike '*-sources.jar' } | Select-Object -First 1 }
 $jar = & $jarSuche
 $backendStand = Stand @((Join-Path $backend 'src\main'), (Join-Path $backend 'pom.xml'))
@@ -118,7 +183,8 @@ if ($backendBauen) {
     if (-not $MitTests) { $mvnArgs += '-DskipTests' }
     Push-Location $backend; try { Ausfuehren (Join-Path $backend 'mvnw.cmd') $mvnArgs } finally { Pop-Location }
     $jar = & $jarSuche
-    if (-not $jar) { throw 'Backend-JAR nicht gefunden (target\*.jar)' }
+    if (-not $jar) { throw "Backend-JAR nicht gefunden (target\*-$version.jar)" }
+    if ($backendStand -gt $jar.LastWriteTimeUtc) { throw "Backend-JAR $($jar.Name) ist älter als der Quellcode – Build prüfen" }
 } else {
     Schritt 'Backend unverändert – vorhandenes JAR wird verwendet'
 }
@@ -151,7 +217,7 @@ if ($Neu -or -not (Test-Path (Join-Path $jre 'bin\java.exe')) -or (Get-Content $
 
 $winsw = Join-Path $cache 'WinSW-x64.exe'
 if (-not (Test-Path $winsw)) {
-    $alt = Join-Path $release 'WinSW-x64.exe'
+    $alt = Join-Path $releaseOrdner 'WinSW-x64.exe'
     if (Test-Path $alt) {
         Move-Item $alt $winsw
     } else {

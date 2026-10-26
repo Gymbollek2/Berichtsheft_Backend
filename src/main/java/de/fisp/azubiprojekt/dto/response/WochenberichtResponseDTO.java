@@ -15,6 +15,8 @@ public record WochenberichtResponseDTO(
         Long id,
         Long personId,
         String personName,
+        /** Rolle passend zur Anrede, z. B. "Auszubildende" – fuer die Unterschriftszeile im Ausdruck */
+        String rolle,
         String beruf,
         int ausbildungsjahr,
         LocalDate weekStart,
